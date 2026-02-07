@@ -14,7 +14,11 @@ struct ScanScreen: View {
 
     @State private var scannedImages: [UIImage] = []
     @State private var errorMessage: String?
+<<<<<<< HEAD
     @State private var isAnalyzing = false
+=======
+    @State private var isProcessing = false
+>>>>>>> e931902 (added home page)
 
     var body: some View {
         VStack(spacing: 16) {
@@ -88,5 +92,12 @@ struct ScanScreen: View {
             errorMessage = "OCR failed: \(error.localizedDescription)"
             print("OCR error:", error)
         }
+    }
+}
+private func processScannedTag(images: [UIImage]) {
+        // TODO: Implement OCR and brand lookup
+        // For now, just stop the processing indicator
+        isProcessing = false
+        // Navigate to results view
     }
 }

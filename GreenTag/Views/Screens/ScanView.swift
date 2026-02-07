@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct ScanView: View {
-    @Binding var screenState: ScreenState
-
+    @State private var screenState: ScreenState = .scan
+    @Environment(\.dismiss) var dismiss
     @State private var scanLineOffset: CGFloat = 0
 
     var body: some View {
@@ -67,6 +67,7 @@ struct ScanView: View {
             Spacer()
 
             Button {
+                dismiss()
                 // Flash toggle
             } label: {
                 Image(systemName: "bolt")
@@ -193,5 +194,5 @@ struct ScanView: View {
 }
 
 #Preview {
-    ScanView(screenState: .constant(.scan))
+    ScanView()
 }

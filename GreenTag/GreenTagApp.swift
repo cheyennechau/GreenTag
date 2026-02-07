@@ -4,7 +4,7 @@ import SwiftUI
 struct GreenTagApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
         }
     }
 }
