@@ -1,21 +1,27 @@
-//
-//  ContentView.swift
-//  GreenTag
-//
-//  Created by Cheyenne Chau on 2/7/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @State private var screenState: ScreenState = .scan
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, QWER Hacks!")
+        NavigationStack {
+            Group {
+                switch screenState {
+                case .scan:
+                    ScanView(screenState: $screenState)
+                case .loading:
+                    LoadingView(screenState: $screenState)
+                case .error:
+                    ErrorView(screenState: $screenState)
+                case .results:
+                    ResultsView(
+                        result: SampleData.result,
+                        screenState: $screenState
+                    )
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: screenState)
         }
-        .padding()
     }
 }
 

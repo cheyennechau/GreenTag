@@ -10,9 +10,22 @@
 		2FFD8FEF2F37D75500E3ED80 /* GreenTag.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GreenTag.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E7CFA0D42F37F05500995643 /* Exceptions for "GreenTag" folder in "GreenTag" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Features/Scan/ScanView.swift,
+			);
+			target = 2FFD8FEE2F37D75500E3ED80 /* GreenTag */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2FFD8FF12F37D75500E3ED80 /* GreenTag */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E7CFA0D42F37F05500995643 /* Exceptions for "GreenTag" folder in "GreenTag" target */,
+			);
 			path = GreenTag;
 			sourceTree = "<group>";
 		};
@@ -251,6 +264,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 79833K2C87;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -282,6 +296,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 79833K2C87;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
