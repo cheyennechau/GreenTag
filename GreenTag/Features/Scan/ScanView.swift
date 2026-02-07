@@ -37,7 +37,22 @@ struct ScanScreen: View {
             DocumentScannerView(
                 onComplete: { images in
                     scannedImages = images
-                    // next: pass images into OCR to extract text
+
+                    // MVP: OCR first page and print to console
+                    guard let first = images.first else { return }
+
+                    Task {
+                        do {
+                            let result = try await TextRecognizer.recognizeText(from: first)
+                            print("===== OCR FULL TEXT =====")
+                            print(result.fullText)
+                            print("===== OCR LINES =====")
+                            result.lines.forEach { print($0) }
+                        } catch {
+                            errorMessage = "OCR failed: \(error.localizedDescription)"
+                            print("OCR error:", error)
+                        }
+                    }
                 },
                 onCancel: { },
                 onError: { err in
