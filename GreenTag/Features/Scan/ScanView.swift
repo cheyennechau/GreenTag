@@ -10,15 +10,25 @@ import VisionKit
 
 struct ScanScreen: View {
     @State private var showingScanner = false
+    @State private var showingPhotoPicker = false
+
     @State private var scannedImages: [UIImage] = []
     @State private var errorMessage: String?
+    @State private var isAnalyzing = false
 
     var body: some View {
         VStack(spacing: 16) {
-            Button("Scan tag") {
-                showingScanner = true
+
+            HStack(spacing: 12) {
+                Button("Scan tag") { showingScanner = true }
+                    .disabled(!VNDocumentCameraViewController.isSupported)
+
+                Button("Choose photo") { showingPhotoPicker = true }
             }
-            .disabled(!VNDocumentCameraViewController.isSupported)
+
+            if isAnalyzing {
+                ProgressView("Analyzing…")
+            }
 
             if let first = scannedImages.first {
                 Image(uiImage: first)
@@ -33,37 +43,50 @@ struct ScanScreen: View {
             }
         }
         .padding()
+
+        // Camera scanner sheet
         .sheet(isPresented: $showingScanner) {
             DocumentScannerView(
                 onComplete: { images in
                     scannedImages = images
-
-                    // MVP: OCR first page and print to console
                     guard let first = images.first else { return }
-
-                    Task {
-                        do {
-                            let result = try await TextRecognizer.recognizeText(from: first)
-                            print("===== OCR FULL TEXT =====")
-                            print(result.fullText)
-                            print("===== OCR LINES =====")
-                            result.lines.forEach { print($0) }
-                        } catch {
-                            errorMessage = "OCR failed: \(error.localizedDescription)"
-                            print("OCR error:", error)
-                        }
-                    }
+                    Task { await analyze(image: first) }
                 },
                 onCancel: { },
-                onError: { err in
-                    errorMessage = err.localizedDescription
-                }
+                onError: { err in errorMessage = err.localizedDescription }
             )
         }
+
+        // Photo picker sheet
+        .sheet(isPresented: $showingPhotoPicker) {
+            PhotoPicker { image in
+                scannedImages = [image]
+                Task { await analyze(image: image) }
+            }
+        }
+
         .onAppear {
             if !VNDocumentCameraViewController.isSupported {
                 errorMessage = "Document scanning isn’t supported on this device."
             }
+        }
+    }
+
+    @MainActor
+    private func analyze(image: UIImage) async {
+        isAnalyzing = true
+        errorMessage = nil
+        defer { isAnalyzing = false }
+
+        do {
+            let result = try await TextRecognizer.recognizeText(from: image)
+            print("===== OCR FULL TEXT =====")
+            print(result.fullText)
+            print("===== OCR LINES =====")
+            result.lines.forEach { print($0) }
+        } catch {
+            errorMessage = "OCR failed: \(error.localizedDescription)"
+            print("OCR error:", error)
         }
     }
 }
