@@ -56,8 +56,8 @@ enum Verdict: String {
     }
 
     static func from(score: Int) -> Verdict {
-        if score >= 65 { return .good }
-        if score >= 35 { return .mixed }
+        if score >= 80 { return .good }
+        if score >= 50 { return .mixed }
         return .avoid
     }
 }
