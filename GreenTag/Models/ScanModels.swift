@@ -71,7 +71,7 @@ struct BreakdownSimple: Identifiable {
 
 // MARK: - Complete Scan Result
 
-struct ScanResult {
+struct ScanResult: Codable {
     let brand: String
     let item: String
     let materials: [MaterialComposition]

@@ -369,49 +369,144 @@ struct SettingsView: View {
 
 // MARK: - Scan History View
 
+//struct ScanHistoryView: View {
+//    private let sampleScans: [(brand: String, date: String, score: String)] = [
+//        ("Patagonia",     "Feb 6, 2026",  "A+"),
+//        ("H&M Conscious", "Feb 4, 2026",  "B"),
+//        ("Zara",          "Jan 30, 2026", "C+"),
+//        ("Everlane",      "Jan 28, 2026", "A"),
+//    ]
+//
+//    var body: some View {
+//        List {
+//            ForEach(sampleScans, id: \.brand) { scan in
+//                HStack(spacing: 14) {
+//                    ZStack {
+//                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+//                            .fill(Color.leafGreen.opacity(0.10))
+//                            .frame(width: 42, height: 42)
+//                        Image(systemName: "doc.text.magnifyingglass")
+//                            .font(.system(size: 16, weight: .semibold))
+//                            .foregroundStyle(Color.leafGreen)
+//                    }
+//                    VStack(alignment: .leading, spacing: 3) {
+//                        Text(scan.brand)
+//                            .font(.subheadline.weight(.semibold))
+//                        Text(scan.date)
+//                            .font(.caption)
+//                            .foregroundStyle(.secondary)
+//                    }
+//                    Spacer()
+//                    Text(scan.score)
+//                        .font(.system(size: 15, weight: .bold, design: .rounded))
+//                        .foregroundStyle(Color.forestGreen)
+//                        .padding(.horizontal, 10)
+//                        .padding(.vertical, 5)
+//                        .background(Color.paleGreen)
+//                        .clipShape(Capsule())
+//                }
+//                .padding(.vertical, 4)
+//            }
+//        }
+//        .navigationTitle("Past Results")
+//        .navigationBarTitleDisplayMode(.inline)
+//    }
+//}
+
 struct ScanHistoryView: View {
-    private let sampleScans: [(brand: String, date: String, score: String)] = [
-        ("Patagonia",     "Feb 6, 2026",  "A+"),
-        ("H&M Conscious", "Feb 4, 2026",  "B"),
-        ("Zara",          "Jan 30, 2026", "C+"),
-        ("Everlane",      "Jan 28, 2026", "A"),
-    ]
+    @EnvironmentObject var scanStore: ScanStore
+    @State private var showDeleteConfirmation = false
+    @State private var recordToDelete: ScanRecord?
 
     var body: some View {
         List {
-            ForEach(sampleScans, id: \.brand) { scan in
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.leafGreen.opacity(0.10))
-                            .frame(width: 42, height: 42)
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color.leafGreen)
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(scan.brand)
-                            .font(.subheadline.weight(.semibold))
-                        Text(scan.date)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(scan.score)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.forestGreen)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color.paleGreen)
-                        .clipShape(Capsule())
+            ForEach(scanStore.records) { scan in
+                NavigationLink(value: scan) {
+                    historyRow(scan)
                 }
-                .padding(.vertical, 4)
             }
+            .onDelete(perform: { offsets in
+                // ask to confirm deletion (optional)
+                // we can immediately delete; for safety, confirm
+                let removed = offsets.compactMap { scanStore.records[$0] }
+                if removed.count == 1 {
+                    recordToDelete = removed.first
+                    showDeleteConfirmation = true
+                } else {
+                    scanStore.delete(at: offsets)
+                }
+            })
         }
         .navigationTitle("Past Results")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("Delete this saved scan?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let r = recordToDelete {
+                    scanStore.delete(record: r)
+                    recordToDelete = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                recordToDelete = nil
+            }
+        }
+        // Using NavigationStack + value style allows passing the record object
+        .navigationDestination(for: ScanRecord.self) { record in
+            SavedResultView(record: record)
+                .environmentObject(scanStore)
+        }
+    }
+
+    @ViewBuilder
+    private func historyRow(_ scan: ScanRecord) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.leafGreen.opacity(0.10))
+                    .frame(width: 42, height: 42)
+
+                if let image = scanStore.loadImage(for: scan) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 42, height: 42)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.leafGreen)
+                }
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(scan.brand)
+                    .font(.subheadline.weight(.semibold))
+                Text(DateFormatter.localizedString(from: scan.date, dateStyle: .medium, timeStyle: .none))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if let grade = scan.grade {
+                Text(grade)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.forestGreen)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.paleGreen)
+                    .clipShape(Capsule())
+            } else if let score = scan.score {
+                Text("\(score)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.forestGreen)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.paleGreen)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
+
 
 #Preview {
     HomeView()
