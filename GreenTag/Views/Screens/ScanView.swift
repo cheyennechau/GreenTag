@@ -16,7 +16,7 @@ struct TagInput {
     var careInstructions: String = ""
     var certifications: String = ""
 
-    /// Whether the input came from the camera or manual entry
+    // Whether the input came from the camera or manual entry
     var source: InputSource = .manual
 
     enum InputSource {
@@ -53,13 +53,29 @@ struct ScanView: View {
                         .transition(.opacity)
 
                 case .results:
-                    // For now you can keep SampleData.result if ResultsView needs that type.
-                    // Next step is to build a real Result model from vm fields.
-                    ResultsView(result: SampleData.result, screenState: $vm.screenState)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    if let result = vm.result {
+                        ResultsView(result: result, screenState: $vm.screenState)
+                    } else {
+                        LoadingView(screenState: $vm.screenState)
+                    }
+                    
+                case .error:
+                    VStack(spacing: 16) {
+                        Text("Something went wrong")
+                            .foregroundStyle(.white)
 
-                default:
-                    scannerView
+                        if let msg = vm.errorMessage {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+
+                        Button("Try again") {
+                            withAnimation {
+                                vm.screenState = .scan
+                            }
+                        }
+                    }
                 }
             }
             .animation(.easeInOut(duration: 0.35), value: vm.screenState)
@@ -132,11 +148,11 @@ struct ScanView: View {
     // MARK: - Manual Entry Dismiss Handler
 
     private func handleManualEntryDismiss() {
-        // If the user submitted (brand name was filled), go to loading → results
         guard !tagInput.brandName.trimmingCharacters(in: .whitespaces).isEmpty,
               tagInput.source == .manual else { return }
 
-        // Small delay so the sheet dismiss animation finishes
+        vm.tagInput = tagInput // capture manual input
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 vm.screenState = .loading
@@ -219,7 +235,7 @@ struct ScanView: View {
         VStack(spacing: GTSpacing.xl) {
 
             Button {
-                tagInput = TagInput(source: .camera)
+                vm.tagInput = tagInput
                 activeSheet = .scanner
             } label: {
                 ZStack {
@@ -233,7 +249,7 @@ struct ScanView: View {
 
             HStack(spacing: GTSpacing.xxl) {
                 Button("Choose photo") {
-                    tagInput = TagInput(source: .photoLibrary)
+                    vm.tagInput = tagInput
                     activeSheet = .photos
                 }
                 .font(.subheadline).fontWeight(.medium)
@@ -242,7 +258,7 @@ struct ScanView: View {
                 Rectangle().fill(Color.white.opacity(0.2)).frame(width: 1, height: 12)
 
                 Button("Enter manually") {
-                    tagInput = TagInput(source: .manual)
+                    vm.tagInput = tagInput
                     showManualEntry = true
                 }
                 .font(.subheadline).fontWeight(.medium)
