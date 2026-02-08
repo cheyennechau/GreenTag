@@ -6,3 +6,5 @@ DerivedData/
 *.xcconfig
 .env
 *.xcodeproj/xcuserdata/
+backend/.env
+

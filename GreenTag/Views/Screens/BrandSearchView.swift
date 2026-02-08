@@ -7,10 +7,19 @@
 
 import SwiftUI
 
-// MARK: - Sustainability Level
+// MARK: - Sustainability Level (used for UI rendering)
 
-enum SustainabilityLevel: String {
+enum SustainabilityLevel: String, CaseIterable {
     case low, medium, high
+
+    /// Initialize from the API rating string
+    init(from rating: String) {
+        switch rating.lowercased() {
+        case "high":   self = .high
+        case "medium": self = .medium
+        default:       self = .low
+        }
+    }
 
     var label: String {
         switch self {
@@ -22,9 +31,9 @@ enum SustainabilityLevel: String {
 
     var color: Color {
         switch self {
-        case .low:    return Color(red: 0.90, green: 0.22, blue: 0.21)  // Red
-        case .medium: return Color(red: 0.95, green: 0.76, blue: 0.06)  // Amber
-        case .high:   return Color.leafGreen                              // Green
+        case .low:    return Color(red: 0.90, green: 0.22, blue: 0.21)
+        case .medium: return Color(red: 0.95, green: 0.76, blue: 0.06)
+        case .high:   return Color.leafGreen
         }
     }
 
@@ -43,307 +52,44 @@ enum SustainabilityLevel: String {
         case .high:   return "leaf.fill"
         }
     }
-
-    var score: Int {
-        switch self {
-        case .low:    return 32
-        case .medium: return 61
-        case .high:   return 87
-        }
-    }
 }
 
-// MARK: - Brand Data Model
+// MARK: - Quick Brand Entry (for the browsable list)
 
-struct BrandInfo: Identifiable {
+struct QuickBrand: Identifiable {
     let id = UUID()
     let name: String
-    let category: String       // e.g. "Fast Fashion", "Outdoor / Active", "Luxury"
-    let level: SustainabilityLevel
-    let overview: String
-    let materialSourcing: [BrandDetail]
-    let laborPractices: [BrandDetail]
-    let environmentalImpact: [BrandDetail]
-    let certifications: [String]
-    let alternatives: [AlternativeBrand]
+    let category: String
 }
 
-struct BrandDetail: Identifiable {
-    let id = UUID()
-    let title: String
-    let description: String
-    let sentiment: Sentiment
-
-    enum Sentiment {
-        case positive, neutral, negative
-
-        var icon: String {
-            switch self {
-            case .positive: return "checkmark.circle.fill"
-            case .neutral:  return "minus.circle.fill"
-            case .negative: return "xmark.circle.fill"
-            }
-        }
-
-        var color: Color {
-            switch self {
-            case .positive: return Color.leafGreen
-            case .neutral:  return Color(red: 0.95, green: 0.76, blue: 0.06)
-            case .negative: return Color(red: 0.90, green: 0.22, blue: 0.21)
-            }
-        }
-    }
-}
-
-struct AlternativeBrand: Identifiable {
-    let id = UUID()
-    let name: String
-    let tagline: String
-    let level: SustainabilityLevel
-}
-
-// MARK: - Sample Brands
-
-struct SampleBrands {
-    static let all: [BrandInfo] = [
-        patagonia, zara, hm, everlane, shein, nike, reformation, uniqlo
-    ]
-
-    static let patagonia = BrandInfo(
-        name: "Patagonia",
-        category: "Outdoor / Active",
-        level: .high,
-        overview: "Patagonia is widely recognized as an industry leader in sustainable fashion. The company donates 1% of sales to environmental causes and has pioneered fair trade certified sewing since 2014.",
-        materialSourcing: [
-            BrandDetail(title: "Recycled Materials", description: "87% of fabrics use recycled or regenerated materials including recycled polyester and nylon.", sentiment: .positive),
-            BrandDetail(title: "Organic Cotton", description: "100% of cotton used has been organic since 1996, eliminating synthetic pesticides.", sentiment: .positive),
-            BrandDetail(title: "Traceable Down", description: "All down is traceable and certified to ensure no live-plucking or force-feeding.", sentiment: .positive),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Fair Trade Certified", description: "76% of products are Fair Trade Certified sewn, ensuring fair wages for workers.", sentiment: .positive),
-            BrandDetail(title: "Supply Chain Transparency", description: "Publishes full supplier list and factory audit results annually.", sentiment: .positive),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Carbon Neutral", description: "Achieved carbon neutrality across entire supply chain in 2025.", sentiment: .positive),
-            BrandDetail(title: "Worn Wear Program", description: "Repair and resale program extends garment lifespan, reducing waste significantly.", sentiment: .positive),
-            BrandDetail(title: "Water Usage", description: "Still working on reducing water intensity in dyeing processes.", sentiment: .neutral),
-        ],
-        certifications: ["B Corp", "Fair Trade", "bluesign", "1% for the Planet"],
-        alternatives: [
-            AlternativeBrand(name: "Cotopaxi", tagline: "Gear for good — repurposed materials", level: .high),
-            AlternativeBrand(name: "prAna", tagline: "Fair Trade certified active wear", level: .high),
-            AlternativeBrand(name: "Tentree", tagline: "Plants 10 trees for every item sold", level: .high),
-        ]
-    )
-
-    static let zara = BrandInfo(
-        name: "Zara",
-        category: "Fast Fashion",
-        level: .low,
-        overview: "Zara, owned by Inditex, is one of the world's largest fast fashion retailers. While the company has made sustainability pledges, the fast fashion model inherently encourages overconsumption and generates significant waste.",
-        materialSourcing: [
-            BrandDetail(title: "Join Life Collection", description: "Only ~15% of total production uses their more sustainable Join Life line.", sentiment: .neutral),
-            BrandDetail(title: "Conventional Cotton", description: "Majority of cotton is conventionally grown using high pesticide inputs.", sentiment: .negative),
-            BrandDetail(title: "Synthetic Fabrics", description: "Heavy use of polyester and other synthetics that shed microplastics.", sentiment: .negative),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Supplier Audits", description: "Conducts supplier audits but has faced reports of labor violations in supply chain.", sentiment: .neutral),
-            BrandDetail(title: "Living Wage Gap", description: "Does not guarantee living wages across its supplier factories.", sentiment: .negative),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Overproduction", description: "Produces billions of garments annually, contributing to massive textile waste.", sentiment: .negative),
-            BrandDetail(title: "2040 Pledge", description: "Committed to net-zero emissions by 2040 but limited interim milestones.", sentiment: .neutral),
-            BrandDetail(title: "Garment Collection", description: "Offers in-store clothing collection bins for recycling, though impact is limited.", sentiment: .neutral),
-        ],
-        certifications: [],
-        alternatives: [
-            AlternativeBrand(name: "Everlane", tagline: "Radical transparency in pricing and sourcing", level: .medium),
-            AlternativeBrand(name: "Reformation", tagline: "Sustainable fabrics and carbon-neutral operations", level: .high),
-            AlternativeBrand(name: "ARKET", tagline: "Quality basics with durability focus", level: .medium),
-        ]
-    )
-
-    static let hm = BrandInfo(
-        name: "H&M",
-        category: "Fast Fashion",
-        level: .medium,
-        overview: "H&M has invested heavily in sustainability marketing with its Conscious Collection and garment recycling programs. However, the fast fashion business model remains at odds with true sustainability goals.",
-        materialSourcing: [
-            BrandDetail(title: "Conscious Collection", description: "~30% of materials are from recycled or sustainably sourced origins.", sentiment: .neutral),
-            BrandDetail(title: "Organic Cotton Commitment", description: "One of the world's largest users of organic cotton, though still a minority of total.", sentiment: .positive),
-            BrandDetail(title: "Synthetic Dependency", description: "Still relies heavily on virgin polyester for the majority of products.", sentiment: .negative),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Fair Living Wage Strategy", description: "Has a wage strategy but implementation across all suppliers remains incomplete.", sentiment: .neutral),
-            BrandDetail(title: "Transparency", description: "Publishes detailed supplier list and sustainability reports.", sentiment: .positive),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Garment Collection", description: "Largest fashion garment collector globally, though only a fraction is truly recycled.", sentiment: .neutral),
-            BrandDetail(title: "Climate Targets", description: "Aims for climate positive by 2040 with science-based targets.", sentiment: .positive),
-            BrandDetail(title: "Volume Problem", description: "Sheer production volume undermines sustainability efforts.", sentiment: .negative),
-        ],
-        certifications: ["GOTS (partial)", "Better Cotton Initiative"],
-        alternatives: [
-            AlternativeBrand(name: "Everlane", tagline: "Radical transparency in pricing and sourcing", level: .medium),
-            AlternativeBrand(name: "Pact", tagline: "Organic cotton basics at accessible prices", level: .high),
-            AlternativeBrand(name: "People Tree", tagline: "Pioneer in fair trade fashion", level: .high),
-        ]
-    )
-
-    static let everlane = BrandInfo(
-        name: "Everlane",
-        category: "Modern Essentials",
-        level: .medium,
-        overview: "Everlane pioneered radical transparency by sharing factory details and cost breakdowns. Quality and ethical production are prioritized, though the brand still has room to improve on environmental metrics.",
-        materialSourcing: [
-            BrandDetail(title: "Ethical Factories", description: "Partners with audited factories and shares detailed factory profiles publicly.", sentiment: .positive),
-            BrandDetail(title: "Recycled Materials", description: "Uses recycled polyester in several product lines including outerwear.", sentiment: .positive),
-            BrandDetail(title: "Limited Organic Cotton", description: "Not all cotton products use organic cotton yet.", sentiment: .neutral),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Factory Transparency", description: "Publishes detailed profiles of every factory they work with.", sentiment: .positive),
-            BrandDetail(title: "Worker Wellbeing", description: "Invests in worker programs but no third-party fair trade certification.", sentiment: .neutral),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "No New Plastic Pledge", description: "Committed to eliminating all virgin plastic from supply chain.", sentiment: .positive),
-            BrandDetail(title: "Carbon Offsets", description: "Uses carbon offsets but hasn't achieved full neutrality yet.", sentiment: .neutral),
-        ],
-        certifications: ["OEKO-TEX (select)", "bluesign (select)"],
-        alternatives: [
-            AlternativeBrand(name: "Patagonia", tagline: "Gold standard in outdoor sustainability", level: .high),
-            AlternativeBrand(name: "Kotn", tagline: "Egyptian cotton with community investment", level: .high),
-            AlternativeBrand(name: "Frank And Oak", tagline: "Circular fashion with take-back programs", level: .medium),
-        ]
-    )
-
-    static let shein = BrandInfo(
-        name: "Shein",
-        category: "Ultra Fast Fashion",
-        level: .low,
-        overview: "Shein is an ultra-fast fashion retailer that produces thousands of new styles daily. The extreme speed and low price point raise serious concerns about environmental impact and labor conditions throughout its supply chain.",
-        materialSourcing: [
-            BrandDetail(title: "Low-Quality Synthetics", description: "Primarily uses cheap polyester and other synthetic materials with limited durability.", sentiment: .negative),
-            BrandDetail(title: "No Material Traceability", description: "Minimal transparency about where raw materials are sourced.", sentiment: .negative),
-            BrandDetail(title: "evoluSHEIN Collection", description: "Small collection using recycled polyester, but represents a tiny fraction of output.", sentiment: .neutral),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Supply Chain Opacity", description: "Limited visibility into working conditions across thousands of suppliers.", sentiment: .negative),
-            BrandDetail(title: "Investigation Reports", description: "Multiple investigations have revealed concerning labor practices.", sentiment: .negative),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Massive Overproduction", description: "Adds thousands of new items daily, generating enormous textile waste.", sentiment: .negative),
-            BrandDetail(title: "Microplastic Pollution", description: "Synthetic garments shed microplastics with every wash cycle.", sentiment: .negative),
-            BrandDetail(title: "Carbon Footprint", description: "Global shipping of individually packaged items creates significant emissions.", sentiment: .negative),
-        ],
-        certifications: [],
-        alternatives: [
-            AlternativeBrand(name: "ThredUp", tagline: "Secondhand clothing marketplace", level: .high),
-            AlternativeBrand(name: "Pact", tagline: "Affordable organic cotton basics", level: .high),
-            AlternativeBrand(name: "H&M Conscious", tagline: "More sustainable fast fashion option", level: .medium),
-        ]
-    )
-
-    static let nike = BrandInfo(
-        name: "Nike",
-        category: "Athletic / Sportswear",
-        level: .medium,
-        overview: "Nike has made significant investments in sustainable innovation, including Nike Grind recycling and Flyknit technology that reduces waste. However, the company's massive scale and reliance on synthetic materials present ongoing challenges.",
-        materialSourcing: [
-            BrandDetail(title: "Nike Grind", description: "Recycles manufacturing waste and old shoes into materials for new products and surfaces.", sentiment: .positive),
-            BrandDetail(title: "Flyknit Technology", description: "Reduces waste by 60% compared to traditional cut-and-sew manufacturing.", sentiment: .positive),
-            BrandDetail(title: "Synthetic Dependency", description: "Still heavily reliant on petroleum-based synthetics for performance wear.", sentiment: .neutral),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Supplier Audits", description: "Comprehensive audit program covering hundreds of factories globally.", sentiment: .positive),
-            BrandDetail(title: "Historical Concerns", description: "Has significantly improved from past labor controversies but monitoring continues.", sentiment: .neutral),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Move to Zero", description: "Committed to zero carbon and zero waste across operations.", sentiment: .positive),
-            BrandDetail(title: "Water Reduction", description: "Reduced freshwater usage in textile dyeing by 30% since 2020.", sentiment: .positive),
-            BrandDetail(title: "Scale Challenge", description: "Enormous production volume makes meaningful impact reduction difficult.", sentiment: .neutral),
-        ],
-        certifications: ["bluesign (select)", "Better Cotton Initiative"],
-        alternatives: [
-            AlternativeBrand(name: "Allbirds", tagline: "Carbon-neutral footwear from natural materials", level: .high),
-            AlternativeBrand(name: "Veja", tagline: "Transparent sneakers with fair trade rubber", level: .high),
-            AlternativeBrand(name: "On Running", tagline: "Performance with recycled materials", level: .medium),
-        ]
-    )
-
-    static let reformation = BrandInfo(
-        name: "Reformation",
-        category: "Contemporary / Trendy",
-        level: .high,
-        overview: "Reformation combines trendy designs with genuine sustainability practices. The brand tracks and publishes the environmental footprint of every product and invests heavily in deadstock and sustainable fabrics.",
-        materialSourcing: [
-            BrandDetail(title: "Deadstock & Surplus Fabrics", description: "Uses deadstock, surplus, and regenerated fabrics to minimize waste.", sentiment: .positive),
-            BrandDetail(title: "RefScale", description: "Tracks CO2, water, and waste for every garment and publishes results.", sentiment: .positive),
-            BrandDetail(title: "TENCEL & Linen", description: "Prioritizes low-impact fibers like TENCEL Lyocell and organic linen.", sentiment: .positive),
-        ],
-        laborPractices: [
-            BrandDetail(title: "LA Manufacturing", description: "Majority of production in owned LA factory with fair wages.", sentiment: .positive),
-            BrandDetail(title: "Supplier Code", description: "Strict supplier code of conduct with regular audits.", sentiment: .positive),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Carbon Neutral", description: "Has been carbon neutral since 2015 through reduction and offsets.", sentiment: .positive),
-            BrandDetail(title: "Water Savings", description: "Saves millions of gallons of water annually compared to conventional production.", sentiment: .positive),
-        ],
-        certifications: ["Climate Neutral", "OEKO-TEX"],
-        alternatives: [
-            AlternativeBrand(name: "Christy Dawn", tagline: "Farm-to-closet regenerative fashion", level: .high),
-            AlternativeBrand(name: "Amour Vert", tagline: "Zero-waste sustainable basics", level: .high),
-            AlternativeBrand(name: "Girlfriend Collective", tagline: "Activewear from recycled bottles", level: .high),
-        ]
-    )
-
-    static let uniqlo = BrandInfo(
-        name: "Uniqlo",
-        category: "Casual / Basics",
-        level: .medium,
-        overview: "Uniqlo focuses on functional basics with longer product lifecycles than typical fast fashion. The brand has made progress on sustainability but still faces challenges around supply chain transparency and environmental impact at scale.",
-        materialSourcing: [
-            BrandDetail(title: "RE.UNIQLO", description: "Recycling program turns old garments into new products like down jackets.", sentiment: .positive),
-            BrandDetail(title: "DRY-EX Technology", description: "Uses recycled PET bottles for their moisture-wicking fabric line.", sentiment: .positive),
-            BrandDetail(title: "Conventional Cotton", description: "Still sources significant amounts of conventional cotton.", sentiment: .neutral),
-        ],
-        laborPractices: [
-            BrandDetail(title: "Factory List", description: "Publishes list of core partner factories for transparency.", sentiment: .positive),
-            BrandDetail(title: "Xinjiang Cotton", description: "Has faced scrutiny over cotton sourcing from sensitive regions.", sentiment: .negative),
-        ],
-        environmentalImpact: [
-            BrandDetail(title: "Longevity Focus", description: "LifeWear philosophy emphasizes durability over trend-chasing.", sentiment: .positive),
-            BrandDetail(title: "Packaging Reduction", description: "Eliminated single-use plastic bags in many markets.", sentiment: .positive),
-            BrandDetail(title: "Global Scale", description: "Massive production volume presents ongoing sustainability challenges.", sentiment: .neutral),
-        ],
-        certifications: ["Better Cotton Initiative"],
-        alternatives: [
-            AlternativeBrand(name: "Kotn", tagline: "Egyptian cotton essentials with impact", level: .high),
-            AlternativeBrand(name: "Pact", tagline: "Organic cotton everyday basics", level: .high),
-            AlternativeBrand(name: "MUJI", tagline: "Minimal basics with natural materials", level: .medium),
-        ]
-    )
-}
+private let quickBrands: [QuickBrand] = [
+    QuickBrand(name: "Everlane",    category: "Modern Essentials"),
+    QuickBrand(name: "H&M",         category: "Fast Fashion"),
+    QuickBrand(name: "Nike",        category: "Athletic / Sportswear"),
+    QuickBrand(name: "Patagonia",   category: "Outdoor / Active"),
+    QuickBrand(name: "Reformation", category: "Contemporary / Trendy"),
+    QuickBrand(name: "Shein",       category: "Ultra Fast Fashion"),
+    QuickBrand(name: "Uniqlo",      category: "Casual / Basics"),
+    QuickBrand(name: "Zara",        category: "Fast Fashion"),
+]
 
 // MARK: - Brand Search View
 
 struct BrandSearchView: View {
+    @StateObject private var service = BrandService()
     @State private var searchText = ""
-    @State private var selectedBrand: BrandInfo?
-    @Environment(\.dismiss) private var dismiss
+    @State private var navigateToReport = false
 
-    private var filteredBrands: [BrandInfo] {
-        if searchText.isEmpty {
-            return SampleBrands.all.sorted { $0.name < $1.name }
+    private var filteredBrands: [QuickBrand] {
+        if searchText.isEmpty { return quickBrands }
+        return quickBrands.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
         }
-        return SampleBrands.all
-            .filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-            .sorted { $0.name < $1.name }
     }
 
-    // Group brands by first letter for section headers
-    private var groupedBrands: [(letter: String, brands: [BrandInfo])] {
-        let dict = Dictionary(grouping: filteredBrands) { brand in
-            String(brand.name.prefix(1)).uppercased()
+    private var groupedBrands: [(letter: String, brands: [QuickBrand])] {
+        let dict = Dictionary(grouping: filteredBrands) {
+            String($0.name.prefix(1)).uppercased()
         }
         return dict.sorted { $0.key < $1.key }
             .map { (letter: $0.key, brands: $0.value) }
@@ -351,27 +97,48 @@ struct BrandSearchView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
+            Color(.systemGroupedBackground).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Search bar
                 searchBar
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 12)
 
-                if filteredBrands.isEmpty {
+                if filteredBrands.isEmpty && !searchText.isEmpty {
+                    // No matches in quick list — offer to search via API
+                    freeSearchState
+                } else if filteredBrands.isEmpty {
                     emptyState
                 } else {
                     brandList
                 }
             }
+
+            // Loading overlay
+            if service.isLoading {
+                loadingOverlay
+            }
         }
         .navigationTitle("Search Brands")
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(item: $selectedBrand) { brand in
-            BrandReportView(brand: brand)
+        .navigationDestination(isPresented: $navigateToReport) {
+            if let assessment = service.lastAssessment {
+                BrandReportView(assessment: assessment)
+            }
+        }
+        .alert("Error", isPresented: .init(
+            get: { service.errorMessage != nil },
+            set: { if !$0 { service.errorMessage = nil } }
+        )) {
+            Button("OK") { service.errorMessage = nil }
+        } message: {
+            Text(service.errorMessage ?? "")
+        }
+        .onChange(of: service.lastAssessment) { _, newVal in
+            if newVal != nil {
+                navigateToReport = true
+            }
         }
     }
 
@@ -386,6 +153,13 @@ struct BrandSearchView: View {
             TextField("Search for a brand...", text: $searchText)
                 .font(.subheadline)
                 .autocorrectionDisabled()
+                .onSubmit {
+                    // When user presses return, search any brand
+                    let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty {
+                        Task { await service.assessBrand(trimmed) }
+                    }
+                }
 
             if !searchText.isEmpty {
                 Button {
@@ -421,7 +195,7 @@ struct BrandSearchView: View {
                         ForEach(group.brands) { brand in
                             brandRow(brand)
                                 .onTapGesture {
-                                    selectedBrand = brand
+                                    Task { await service.assessBrand(brand.name) }
                                 }
                         }
                     } header: {
@@ -451,16 +225,15 @@ struct BrandSearchView: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    private func brandRow(_ brand: BrandInfo) -> some View {
+    private func brandRow(_ brand: QuickBrand) -> some View {
         HStack(spacing: 14) {
-            // Brand initial badge
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(brand.level.bgColor)
+                    .fill(Color.leafGreen.opacity(0.08))
                     .frame(width: 44, height: 44)
                 Text(String(brand.name.prefix(1)))
                     .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(brand.level.color)
+                    .foregroundStyle(Color.forestGreen)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -474,20 +247,6 @@ struct BrandSearchView: View {
 
             Spacer()
 
-            // Sustainability pill
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(brand.level.color)
-                    .frame(width: 8, height: 8)
-                Text(brand.level.label)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(brand.level.color)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(brand.level.bgColor)
-            .clipShape(Capsule())
-
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.quaternary)
@@ -498,6 +257,60 @@ struct BrandSearchView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
         .padding(.vertical, 4)
+    }
+
+    // MARK: - Free Search State (brand not in quick list)
+
+    private var freeSearchState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.leafGreen.opacity(0.08))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "globe.americas.fill")
+                    .font(.system(size: 32, weight: .medium))
+                    .foregroundStyle(Color.leafGreen.opacity(0.5))
+            }
+
+            VStack(spacing: 8) {
+                Text("Not in our quick list")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+
+                Text("Press Search to analyze \"\(searchText)\" using AI.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+
+            Button {
+                Task { await service.assessBrand(searchText) }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "leaf.fill")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Analyze \(searchText)")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [Color.leafGreen, Color.darkGreen],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(Capsule())
+                .shadow(color: Color.leafGreen.opacity(0.3), radius: 6, x: 0, y: 3)
+            }
+
+            Spacer()
+        }
     }
 
     // MARK: - Empty State
@@ -513,33 +326,61 @@ struct BrandSearchView: View {
                     .font(.system(size: 32, weight: .medium))
                     .foregroundStyle(Color.leafGreen.opacity(0.4))
             }
-            Text("No brands found")
+            Text("Search for any brand")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
-            Text("Try a different search term, or this brand\nwill be available after our API integration.")
+            Text("Type a brand name and press return\nto get a sustainability report.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
             Spacer()
         }
     }
+
+    // MARK: - Loading Overlay
+
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .fill(Color.leafGreen.opacity(0.10))
+                        .frame(width: 90, height: 90)
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color.leafGreen))
+                        .scaleEffect(1.3)
+                }
+
+                Text("Analyzing brand...")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+
+                Text("Checking sustainability data with AI")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .padding(32)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
 }
 
-// MARK: - Make BrandInfo work with navigationDestination
-
-extension BrandInfo: Hashable {
-    static func == (lhs: BrandInfo, rhs: BrandInfo) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}
-
-// MARK: - Brand Report View
+// MARK: - Brand Report View (API-driven)
 
 struct BrandReportView: View {
-    let brand: BrandInfo
+    let assessment: BrandAssessment
     @State private var appeared = false
 
+    private var level: SustainabilityLevel {
+        SustainabilityLevel(from: assessment.overall.rating)
+    }
+
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 20) {
 
                 // Score Card
@@ -550,33 +391,28 @@ struct BrandReportView: View {
                 overviewSection
 
                 // Material Sourcing
-                detailSection(
+                pillarSection(
                     title: "Material Sourcing",
                     icon: "tshirt.fill",
-                    details: brand.materialSourcing
+                    pillar: assessment.pillars.materials
                 )
 
-                // Labor Practices
-                detailSection(
-                    title: "Labor Practices",
+                // Labor & Ethics
+                pillarSection(
+                    title: "Labor & Ethics",
                     icon: "person.2.fill",
-                    details: brand.laborPractices
+                    pillar: assessment.pillars.labor
                 )
 
-                // Environmental Impact
-                detailSection(
-                    title: "Environmental Impact",
-                    icon: "globe.americas.fill",
-                    details: brand.environmentalImpact
+                // Common Materials
+                pillarSection(
+                    title: "Common Materials Used",
+                    icon: "cube.fill",
+                    pillar: assessment.pillars.materials_common
                 )
 
-                // Certifications
-                if !brand.certifications.isEmpty {
-                    certificationsSection
-                }
-
-                // Alternative Brands
-                alternativesSection
+                // Evidence sources
+                evidenceSection
 
                 // Disclaimer
                 disclaimerFooter
@@ -585,7 +421,7 @@ struct BrandReportView: View {
             .padding(.horizontal, 20)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(brand.name)
+        .navigationTitle(assessment.brand)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) { appeared = true }
@@ -596,51 +432,33 @@ struct BrandReportView: View {
 
     private var scoreCard: some View {
         VStack(spacing: 16) {
-            // Score ring
+            // Level icon
             ZStack {
-                // Track
                 Circle()
-                    .stroke(Color.gray.opacity(0.12), lineWidth: 10)
+                    .fill(level.bgColor)
                     .frame(width: 100, height: 100)
-
-                // Fill
                 Circle()
-                    .trim(from: 0, to: appeared ? CGFloat(brand.level.score) / 100.0 : 0)
-                    .stroke(
-                        brand.level.color,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
+                    .stroke(level.color.opacity(0.3), lineWidth: 6)
                     .frame(width: 100, height: 100)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeInOut(duration: 1.0).delay(0.2), value: appeared)
-
-                VStack(spacing: 2) {
-                    Text("\(brand.level.score)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(brand.level.color)
-                    Text("/ 100")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                Image(systemName: level.icon)
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundStyle(level.color)
             }
+            .scaleEffect(appeared ? 1 : 0.7)
+            .animation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1), value: appeared)
 
             // Level badge
             HStack(spacing: 8) {
-                Image(systemName: brand.level.icon)
+                Image(systemName: level.icon)
                     .font(.system(size: 14, weight: .semibold))
-                Text("\(brand.level.label) Sustainability")
+                Text("\(level.label) Sustainability")
                     .font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(brand.level.color)
+            .foregroundStyle(level.color)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(brand.level.bgColor)
+            .background(level.bgColor)
             .clipShape(Capsule())
-
-            // Category
-            Text(brand.category)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -655,10 +473,11 @@ struct BrandReportView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Overview", icon: "doc.text.fill")
 
-            Text(brand.overview)
+            Text(assessment.summary)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -667,34 +486,57 @@ struct BrandReportView: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
     }
 
-    // MARK: - Detail Section
+    // MARK: - Pillar Section
 
-    private func detailSection(title: String, icon: String, details: [BrandDetail]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(title, icon: icon)
+    private func pillarSection(title: String, icon: String, pillar: BrandAssessment.Pillar) -> some View {
+        let pillarLevel = SustainabilityLevel(from: pillar.rating)
 
-            ForEach(details) { detail in
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: detail.sentiment.icon)
-                        .font(.system(size: 16))
-                        .foregroundStyle(detail.sentiment.color)
-                        .padding(.top, 2)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionTitle(title, icon: icon)
+                Spacer()
+                // Rating pill
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(pillarLevel.color)
+                        .frame(width: 8, height: 8)
+                    Text(pillarLevel.label)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(pillarLevel.color)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(pillarLevel.bgColor)
+                .clipShape(Capsule())
+            }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(detail.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(detail.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineSpacing(3)
+            Text(pillar.explanation)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Evidence snippets
+            if !pillar.evidence.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(pillar.evidence.enumerated()), id: \.offset) { _, item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "quote.opening")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 3)
+                            Text(item.text)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .italic()
+                                .lineSpacing(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
-
-                if detail.id != details.last?.id {
-                    Divider()
-                        .padding(.leading, 28)
-                }
+                .padding(12)
+                .background(Color(.systemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -704,89 +546,40 @@ struct BrandReportView: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
     }
 
-    // MARK: - Certifications
+    // MARK: - Evidence
 
-    private var certificationsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Certifications", icon: "checkmark.seal.fill")
+    private var evidenceSection: some View {
+        let allEvidence = [
+            assessment.pillars.materials.evidence,
+            assessment.pillars.labor.evidence,
+            assessment.pillars.materials_common.evidence
+        ].flatMap { $0 }
 
-            FlowLayoutSimple(spacing: 8) {
-                ForEach(brand.certifications, id: \.self) { cert in
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.leafGreen)
-                        Text(cert)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Color.forestGreen)
+        let uniqueSources = Array(Set(allEvidence.map(\.source))).sorted()
+
+        return Group {
+            if !uniqueSources.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionTitle("Sources Analyzed", icon: "doc.text.magnifyingglass")
+
+                    ForEach(uniqueSources, id: \.self) { source in
+                        HStack(spacing: 8) {
+                            Image(systemName: "link")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.leafGreen)
+                            Text(source)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Color.paleGreen)
-                    .clipShape(Capsule())
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
-    }
-
-    // MARK: - Alternatives
-
-    private var alternativesSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Sustainable Alternatives", icon: "arrow.triangle.swap")
-
-            ForEach(brand.alternatives) { alt in
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(alt.level.bgColor)
-                            .frame(width: 42, height: 42)
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(alt.level.color)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(alt.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(alt.tagline)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(alt.level.color)
-                            .frame(width: 6, height: 6)
-                        Text(alt.level.label)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(alt.level.color)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(alt.level.bgColor)
-                    .clipShape(Capsule())
-                }
-
-                if alt.id != brand.alternatives.last?.id {
-                    Divider()
-                        .padding(.leading, 54)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
     }
 
     // MARK: - Disclaimer
@@ -796,9 +589,10 @@ struct BrandReportView: View {
             Image(systemName: "info.circle")
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
-            Text("Scores are based on available data and will update with API integration.")
+            Text("Analysis powered by Gemini AI based on available public data. Ratings may change as more sources become available.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -821,68 +615,10 @@ struct BrandReportView: View {
     }
 }
 
-// MARK: - Simple Flow Layout (for certification chips)
-
-struct FlowLayoutSimple: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        for (index, subview) in subviews.enumerated() {
-            let point = CGPoint(
-                x: bounds.minX + result.positions[index].x,
-                y: bounds.minY + result.positions[index].y
-            )
-            subview.place(at: point, anchor: .topLeading, proposal: .unspecified)
-        }
-    }
-
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> (positions: [CGPoint], size: CGSize) {
-        let maxWidth = proposal.width ?? .infinity
-        var positions: [CGPoint] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var maxX: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            positions.append(CGPoint(x: x, y: y))
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-            maxX = max(maxX, x - spacing)
-        }
-
-        return (positions, CGSize(width: maxX, height: y + rowHeight))
-    }
-}
-
 // MARK: - Previews
 
 #Preview("Brand Search") {
     NavigationStack {
         BrandSearchView()
-    }
-}
-
-#Preview("Brand Report - High") {
-    NavigationStack {
-        BrandReportView(brand: SampleBrands.patagonia)
-    }
-}
-
-#Preview("Brand Report - Low") {
-    NavigationStack {
-        BrandReportView(brand: SampleBrands.zara)
     }
 }
