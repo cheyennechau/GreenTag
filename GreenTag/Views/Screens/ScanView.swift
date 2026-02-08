@@ -41,7 +41,6 @@ struct ScanView: View {
     @State private var activeSheet: ActiveSheet?
 
     var body: some View {
-        NavigationStack {
             ZStack {
                 switch vm.screenState {
                 case .scan:
@@ -102,7 +101,6 @@ struct ScanView: View {
                     }
                 }
             }
-        }
     }
 
     // MARK: - Scanner View (camera state)
@@ -164,6 +162,18 @@ struct ScanView: View {
 
     private var topBar: some View {
         HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Color.white.opacity(0.12))
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Close scanner")
+
             Spacer()
         }
         .padding(.horizontal, GTSpacing.xl)
@@ -265,6 +275,10 @@ struct ScanView: View {
                 .foregroundColor(.white.opacity(0.5))
             }
         }
+    }
+    
+    private func close() {
+        dismiss()
     }
 }
 
