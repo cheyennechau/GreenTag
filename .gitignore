@@ -5,5 +5,3 @@ DerivedData/
 .DS_Store
 *.xcconfig
 .env
-GreenTag/ContentView.swift
-GreenTag/GreenTagApp.swift
