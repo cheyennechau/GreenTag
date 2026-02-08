@@ -9,21 +9,8 @@ import SwiftUI
 
 struct BiaRootView: View {
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("GreenTag")
-                    .font(.largeTitle)
-                    .bold()
-
-                Text("Welcome")
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Home")
+            HomeView()  // Use your existing HomeView
         }
-    }
 }
 
 #Preview {
