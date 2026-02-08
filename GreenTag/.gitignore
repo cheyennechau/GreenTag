@@ -7,4 +7,5 @@ DerivedData/
 .env
 *.xcodeproj/xcuserdata/
 backend/.env
-
+GreenTag/backend/.env
+backend/brand-assessor/node_modules/
