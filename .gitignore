@@ -5,3 +5,5 @@ DerivedData/
 .DS_Store
 *.xcconfig
 .env
+GreenTag/backend/.env
+backend/brand-assessor/node_modules/
