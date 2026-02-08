@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ResultsView: View {
     let result: ScanResult
+    @EnvironmentObject var scanStore: ScanStore
     @Binding var screenState: ScreenState
 
     @State private var showCompare = false
@@ -123,41 +124,9 @@ struct ResultsView: View {
                 .padding(.horizontal, GTSpacing.xl)
                 .padding(.bottom, 120) // Clear sticky bar
             }
-
-            // Sticky bottom actions
-            StickyActionsView(
-                onCompare: { showCompare = true },
-                onBack: { screenState = .scan }
-            )
         }
         .navigationTitle("Scan Results")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    screenState = .scan
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.gtPrimary)
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    screenState = .error
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(.gtPrimary)
-                }
-            }
-        }
-        .sheet(isPresented: $showCompare) {
-            CompareSheetView(
-                itemA: compareItemA,
-                itemB: SampleData.compareItemB
-            )
-        }
         .background(Color.gtBackground)
     }
 
@@ -178,21 +147,11 @@ struct ResultsView: View {
                 .strokeBorder(Color(UIColor.separator).opacity(0.3), lineWidth: 0.5)
         )
     }
-
-    private var compareItemA: CompareItem {
-        CompareItem(
-            brand: result.brand,
-            item: result.item,
-            score: result.score,
-            materials: result.materials.map { "\($0.percentage)% \($0.material)" }.joined(separator: ", "),
-            breakdown: result.breakdown.map { BreakdownSimple(label: $0.label, value: $0.value) },
-            biodegRange: "\(result.biodegradation.rangeLow) \u{2013} \(result.biodegradation.rangeHigh)"
-        )
-    }
 }
 
 #Preview {
     NavigationStack {
         ResultsView(result: SampleData.result, screenState: .constant(.results))
+            .environmentObject(ScanStore())
     }
 }

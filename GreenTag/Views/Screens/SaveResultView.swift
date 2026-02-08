@@ -18,17 +18,15 @@ struct SavedResultView: View {
 
     var body: some View {
         Group {
-            if let result = decodedResult {
-                // We have a full ScanResult: show your existing ResultsView
-                ResultsView(result: result, screenState: .constant(.results))
-            } else if isLoading {
+            if isLoading {
                 ProgressView("Loading…")
-                    .task { await loadIfAvailable() }
+            } else if let result = decodedResult {
+                ResultsView(result: result, screenState: .constant(.results))
             } else {
-                // Fallback UI if we can't decode a ScanResult JSON
                 fallbackView
             }
         }
+        .task { await loadIfAvailable() }
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -78,14 +76,12 @@ struct SavedResultView: View {
 
     @MainActor
     private func loadIfAvailable() async {
-        if let r = scanStore.loadAnalysis(for: record) {
-            // real persisted analysis
-            decodedResult = r
+        // Attempt to rebuild a ScanResult from persisted analysis JSON
+        if let rebuilt = scanStore.rebuildScanResult(for: record) {
+            decodedResult = rebuilt
         } else {
-            
-            decodedResult = SampleData.result
+            decodedResult = nil
         }
         isLoading = false
     }
-
 }

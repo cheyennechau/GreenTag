@@ -27,12 +27,19 @@ final class ScanViewModel: ObservableObject {
     @Published var scoreVerdict: String = ""
     @Published var biodegText: String = ""
     @Published var syntheticWarningText: String?
+    
+    // inject from ScanView
+    weak var scanStore: ScanStore?
+
+    // prevent duplicate saves for the same result render
+    private var didAutoSaveCurrentResult = false
 
     func analyze(image: UIImage) {
         // reset
         result = nil
         errorMessage = nil
         lastImage = image
+        didAutoSaveCurrentResult = false
 
         ocrText = ""
         parsedText = ""
@@ -62,6 +69,7 @@ final class ScanViewModel: ObservableObject {
 
                 // build a ScanResult (MVP mapping)
                 result = buildScanResult(from: out)
+                autoSaveIfNeeded(out: out)
 
                 // go to results only when result exists
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -225,5 +233,110 @@ final class ScanViewModel: ObservableObject {
             }
         }
         return ("—", "—")
+    }
+    
+    private func autoSaveIfNeeded(out: GreenTagPipeline.Output) {
+        guard !didAutoSaveCurrentResult else { return }
+        guard let scanStore else { return }
+
+        // Brand: prefer manual input if present, otherwise try to extract from OCR later (MVP just use tagInput)
+        let brand = {
+            let b = tagInput.brandName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return b.isEmpty ? "UNKNOWN" : b.uppercased()
+        }()
+
+        // Grade/verdict: use your existing verdict if present
+        let grade = out.verdict.isEmpty ? scoreBucket(out.overall) : out.verdict
+
+        // Optional: store debug analysis as JSON
+        let analysisPayload: [String: Any] = [
+            "ocrText": out.ocrText,
+            "parsedText": out.parsedText,
+            "parseConfidence": out.parseConfidence,
+            "overall": out.overall,
+            "verdict": out.verdict,
+            "biodegText": out.biodegText,
+            "syntheticWarningText": out.syntheticWarningText as Any
+        ]
+
+        scanStore.addRecord(
+            brand: brand,
+            score: out.overall,
+            grade: grade,
+            notes: nil,
+            image: lastImage,
+            analysisJSON: analysisPayload
+        )
+
+        didAutoSaveCurrentResult = true
+    }
+
+    private func scoreBucket(_ score: Int) -> String {
+        switch score {
+        case 75...100: return "Good"
+        case 50..<75: return "Mixed"
+        default: return "Avoid"
+        }
+    }
+    
+    func analyzeManual() {
+        didAutoSaveCurrentResult = false
+        errorMessage = nil
+        lastImage = nil
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            screenState = .loading
+        }
+
+        Task {
+            // Build a lightweight "result" from manual fields for MVP
+            // (You can later run it through OpenAI / backend)
+            let brand = tagInput.brandName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let score = 70 // MVP placeholder until you have real logic
+
+            // Make a minimal ScanResult so UI can show something
+            let manualResult = ScanResult(
+                brand: brand.isEmpty ? "UNKNOWN" : brand.uppercased(),
+                item: "Clothing Item",
+                materials: [],
+                score: score,
+                confidence: .medium,
+                breakdown: [],
+                biodegradation: BiodegradationData(
+                    rangeLow: "—",
+                    rangeHigh: "—",
+                    positionPercent: Double(score)/100.0,
+                    hasSynthetics: false,
+                    syntheticWarning: nil,
+                    comparisons: []
+                ),
+                whyThisScore: ["Manual entry (MVP placeholder scoring)."],
+                certifications: []
+            )
+
+            self.result = manualResult
+
+            // Auto-save
+            scanStore?.addRecord(
+                brand: manualResult.brand,
+                score: manualResult.score,
+                grade: "Manual",
+                notes: "Manual entry",
+                image: nil,
+                analysisJSON: [
+                    "source": "manual",
+                    "brandName": tagInput.brandName,
+                    "materials": tagInput.materials,
+                    "countryOfOrigin": tagInput.countryOfOrigin,
+                    "careInstructions": tagInput.careInstructions,
+                    "certifications": tagInput.certifications
+                ]
+            )
+            didAutoSaveCurrentResult = true
+
+            withAnimation(.easeInOut(duration: 0.3)) {
+                screenState = .results
+            }
+        }
     }
 }
