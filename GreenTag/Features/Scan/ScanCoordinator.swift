@@ -25,12 +25,40 @@ struct ScanCoordinator: View {
     // add state for parser output
     @State private var parsedText: String = ""
     @State private var parseConfidence: String = ""
+    
+    @State private var scoreOverall: Int?
+    @State private var scoreVerdict: String = ""
+    @State private var biodegText: String = ""
+    @State private var syntheticWarningText: String?
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
             VStack(spacing: 16) {
+                if let scoreOverall = scoreOverall {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Score")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+
+                        Text("\(scoreOverall) — \(scoreVerdict)")
+                            .foregroundStyle(.white.opacity(0.9))
+
+                        Text("Biodegradation: \(biodegText)")
+                            .foregroundStyle(.white.opacity(0.85))
+
+                        if let syntheticWarningText {
+                            Text(syntheticWarningText)
+                                .foregroundStyle(.yellow)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                
                 Text("GreenTag")
                     .font(.title2).bold()
                     .foregroundStyle(.white)
@@ -113,6 +141,10 @@ struct ScanCoordinator: View {
         ocrText = ""
         parsedText = ""
         parseConfidence = ""
+        scoreOverall = nil
+        scoreVerdict = ""
+        biodegText = ""
+        syntheticWarningText = nil
         defer { isAnalyzing = false }
 
         do {
@@ -121,6 +153,27 @@ struct ScanCoordinator: View {
             print("✅ OCR OUTPUT:\n\(result.fullText)")
 
             let parsed = FabricParser.parse(result.fullText)
+            let score = ScoringEngine.score(parts: parsed.parts)
+
+            scoreOverall = score.overall
+            scoreVerdict = score.verdict.rawValue
+
+            let majority = "\(formatMonths(score.biodegMajority.minMonths)) – \(formatMonths(score.biodegMajority.maxMonths))"
+
+            if let res = score.biodegResidual {
+                biodegText = "Most: \(majority) • Residue: \(formatMonths(res.minMonths))–\(formatMonths(res.maxMonths))"
+            } else {
+                biodegText = majority
+            }
+
+            syntheticWarningText = score.syntheticWarning
+                ? "⚠️ High synthetic content (microplastics risk)"
+                : nil
+
+            print("✅ SCORE:", score.overall, score.verdict.rawValue, score.syntheticWarning,
+                  score.biodegMajority.minMonths, score.biodegMajority.maxMonths,
+                  score.biodegResidual?.minMonths ?? -1, score.biodegResidual?.maxMonths ?? -1)
+
             parseConfidence = parsed.confidence.rawValue
 
             if parsed.parts.isEmpty {
@@ -136,6 +189,16 @@ struct ScanCoordinator: View {
         } catch {
             errorMessage = "❌ OCR failed: \(error.localizedDescription)"
             print("❌ OCR error:", error)
+        }
+    }
+    
+    private func formatMonths(_ months: Int) -> String {
+        if months < 12 { return "\(months) mo" }
+        let years = Double(months) / 12.0
+        if years < 10 {
+            return String(format: "%.1f yr", years)
+        } else {
+            return "\(Int(round(years))) yr"
         }
     }
 }
