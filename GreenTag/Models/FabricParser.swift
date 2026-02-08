@@ -24,7 +24,6 @@ struct FabricParseResult {
 
 enum FabricParser {
 
-    // Canonical fiber name -> aliases you might see in OCR (add as you go)
     private static let fiberAliases: [String: [String]] = [
         "cotton": ["cotton", "coton", "cotone", "algodon", "algodón", "algodao", "algodão", "baumwolle", "pamuk", "хлопок"],
         "polyester": ["polyester", "poliester", "poliéster", "poliestere", "polyamid", "polyamide"],
@@ -48,70 +47,45 @@ enum FabricParser {
     static func parse(_ ocrText: String) -> FabricParseResult {
         let normalized = normalizeDocument(ocrText)
 
-        // Extract pairs anywhere in the whole text
-        let parts = extractPartsFromDocument(normalized)
+        // 1) Get raw parts (positional if possible, otherwise document extraction)
+        let rawParts: [MaterialPart]
+        if let positional = tryPositionalPairing(normalized), !positional.isEmpty {
+            rawParts = positional
+        } else {
+            rawParts = extractPartsFromDocument(normalized)
+        }
 
-        guard !parts.isEmpty else {
+        guard !rawParts.isEmpty else {
             return FabricParseResult(parts: [], confidence: .low, matchedLine: nil)
         }
 
-        let deduped = Array(Set(parts)).sorted { $0.percent > $1.percent }
+        // 2) Dedupe exact duplicates
+        let deduped = Array(Set(rawParts))
 
-        let conf: ParseConfidence
-        if deduped.count == 1, deduped[0].percent == 100 { conf = .high }
-        else { conf = .medium }
+        // 3) Filter bogus extras by choosing subset closest to 100
+        let filtered = bestSubsetNear100(deduped)
 
-        return FabricParseResult(parts: deduped, confidence: conf, matchedLine: nil)
+        // 4) Combine same fiber (sum percents)
+        let merged = combineSameFiber(filtered)
+
+        // 5) Confidence from how “complete” total looks
+        let total = merged.map(\.percent).reduce(0, +)
+        let confidence: ParseConfidence =
+            (merged.count == 1 && total == 100) ? .high :
+            (abs(total - 100) <= 3) ? .medium : .low
+
+        return FabricParseResult(parts: merged, confidence: confidence, matchedLine: nil)
     }
 
-//    static func parse(_ ocrText: String) -> FabricParseResult {
-//        let rawLines = ocrText
-//            .components(separatedBy: .newlines)
-//            .map { normalizeLine($0) }
-//            .filter { !$0.isEmpty }
-//
-//        // 1) candidate lines: must have a % and at least one known fiber alias
-//        let candidates = rawLines.filter { line in
-//            (line.contains("%") || line.range(of: #"\b\d{1,3}\b"#, options: .regularExpression) != nil)
-//            && containsAnyFiberAlias(line)
-//        }
-//
-//        // If nothing looks like composition, low confidence
-//        guard !candidates.isEmpty else {
-//            return FabricParseResult(parts: [], confidence: .low, matchedLine: nil)
-//        }
-//
-//        // 2) Score each candidate and extract parts; pick best
-//        var best: (score: Int, parts: [MaterialPart], line: String)? = nil
-//
-//        for line in candidates {
-//            let parts = extractParts(from: line)
-//            let score = scoreLine(line, parts: parts)
-//            if let b = best {
-//                if score > b.score { best = (score, parts, line) }
-//            } else {
-//                best = (score, parts, line)
-//            }
-//        }
-//
-//        guard let bestPick = best, !bestPick.parts.isEmpty else {
-//            return FabricParseResult(parts: [], confidence: .low, matchedLine: candidates.first)
-//        }
-//
-//        // 3) confidence
-//        let conf: ParseConfidence
-//        if bestPick.parts.count == 1, bestPick.parts[0].percent == 100 {
-//            conf = .high
-//        } else if !bestPick.parts.isEmpty {
-//            conf = .medium
-//        } else {
-//            conf = .low
-//        }
-//
-//        return FabricParseResult(parts: bestPick.parts, confidence: conf, matchedLine: bestPick.line)
-//    }
-
-    // MARK: - Helpers
+    // Helpers
+    
+    private static func combineSameFiber(_ parts: [MaterialPart]) -> [MaterialPart] {
+        let grouped = Dictionary(grouping: parts, by: { $0.material })
+        let merged = grouped.map { (material, items) in
+            MaterialPart(material: material, percent: items.map(\.percent).reduce(0, +))
+        }
+        return merged.sorted { $0.percent > $1.percent }
+    }
 
     private static func normalizeLine(_ s: String) -> String {
         var t = s.lowercased()
@@ -149,92 +123,143 @@ enum FabricParser {
         t = t.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+    
+    private static func tryPositionalPairing(_ text: String) -> [MaterialPart]? {
+        let ns = text as NSString
 
+        // 1) extract percentages in order
+        let percentRegex = try! NSRegularExpression(pattern: #"\b(\d{1,3})\s*%"#, options: [])
+        let percentMatches = percentRegex.matches(in: text, options: [], range: NSRange(location: 0, length: ns.length))
+        let percents = percentMatches.compactMap {
+            Int(ns.substring(with: $0.range(at: 1)))
+        }
 
-//    private static func extractParts(from line: String) -> [MaterialPart] {
-//        // Matches patterns like:
-//        // 100% cotton
-//        // 60 % polyester
-//        // 40% algodao
-//        let pattern = #"(?:^|\s)(\d{1,3})\s*%?\s*([a-záàâãäåçéèêëíìîïñóòôõöúùûüýÿ]+)"#
-//        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return [] }
-//
-//        let ns = line as NSString
-//        let matches = regex.matches(in: line, options: [], range: NSRange(location: 0, length: ns.length))
-//
-//        var parts: [MaterialPart] = []
-//        for m in matches {
-//            guard m.numberOfRanges >= 3 else { continue }
-//            let pctStr = ns.substring(with: m.range(at: 1))
-//            let word = ns.substring(with: m.range(at: 2))
-//
-//            guard let pct = Int(pctStr), (0...100).contains(pct) else { continue }
-//
-//            // Map alias -> canonical (if unknown, skip)
-//            if let canonical = aliasToCanonical[word] {
-//                parts.append(MaterialPart(material: canonical, percent: pct))
-//            }
-//        }
-//
-//        // Dedup if OCR repeats the same thing
-//        parts = Array(Set(parts)).sorted { $0.percent > $1.percent }
-//        return parts
-//    }
-//
-//    private static func scoreLine(_ line: String, parts: [MaterialPart]) -> Int {
-//        var score = 0
-//
-//        // Reward percent presence
-//        if line.contains("%") { score += 2 }
-//
-//        // Reward having extracted parts
-//        score += parts.count * 3
-//
-//        // Reward clean “100% single fiber”
-//        if parts.count == 1, parts.first?.percent == 100 { score += 10 }
-//
-//        // Penalize very long noisy lines (addresses etc.)
-//        if line.count > 40 { score -= 2 }
-//        if line.range(of: #"\b\d{3,}\b"#, options: .regularExpression) != nil { score -= 1 } // postal codes etc.
-//
-//        return score
-//    }
+        // 2) extract fibers in order
+        let fibers = aliasToCanonical
+            .keys
+            .compactMap { alias in
+                text.contains(alias) ? alias : nil
+            }
+
+        // 3) strict positional condition
+        guard
+            percents.count > 1,
+            percents.count == fibers.count,
+            percentMatches.last!.range.location < text.range(of: fibers.first!)!.lowerBound.utf16Offset(in: text)
+        else {
+            return nil
+        }
+
+        // 4) zip by index
+        return zip(percents, fibers).compactMap { pct, alias in
+            guard let canonical = aliasToCanonical[alias] else { return nil }
+            return MaterialPart(material: canonical, percent: pct)
+        }
+    }
     
     private static func extractPartsFromDocument(_ text: String) -> [MaterialPart] {
-        // We'll match either:
-        //  (A) 100% ... cotton
-        //  (B) cotton ... 100%
-        //
-        // Guardrail: only accept if the gap between percent and fiber is <= maxGap characters.
-        let maxGap = 30
+        let maxForward = 40   // how far AFTER the % to search
+        let maxBackward = 20  // how far BEFORE the % to search (fallback)
 
         var parts: [MaterialPart] = []
 
-        // Precompute all alias occurrences (so we can look up canonical)
-        let aliases = Array(aliasToCanonical.keys)
-
-        // 1) Find all percent occurrences
         let percentRegex = try! NSRegularExpression(pattern: #"\b(\d{1,3})\s*%"#, options: [])
         let ns = text as NSString
         let percentMatches = percentRegex.matches(in: text, options: [], range: NSRange(location: 0, length: ns.length))
 
-        // 2) For each percent, look around it for any fiber alias within maxGap chars
+        // Sort aliases longest-first so "polyester" beats "ester" etc.
+        let aliases = aliasToCanonical.keys.sorted { $0.count > $1.count }
+
         for pm in percentMatches {
             let pctStr = ns.substring(with: pm.range(at: 1))
             guard let pct = Int(pctStr), (0...100).contains(pct) else { continue }
 
-            let start = max(0, pm.range.location - maxGap)
-            let end = min(ns.length, pm.range.location + pm.range.length + maxGap)
-            let windowRange = NSRange(location: start, length: end - start)
-            let window = ns.substring(with: windowRange)
+            let pctLoc = pm.range.location
 
-            // Find any alias in the window
-            if let alias = aliases.first(where: { window.contains($0) }),
+            // 1) Look forward first (most common on tags)
+            let fStart = pctLoc
+            let fEnd = min(ns.length, pctLoc + pm.range.length + maxForward)
+            let fRange = NSRange(location: fStart, length: fEnd - fStart)
+            let forward = ns.substring(with: fRange)
+
+            if let (alias, _) = firstAliasOccurrence(in: forward, aliases: aliases),
                let canonical = aliasToCanonical[alias] {
                 parts.append(MaterialPart(material: canonical, percent: pct))
+                continue
+            }
+
+            // 2) Fallback: look backward
+            let bStart = max(0, pctLoc - maxBackward)
+            let bRange = NSRange(location: bStart, length: pctLoc - bStart)
+            let backward = ns.substring(with: bRange)
+
+            if let (alias, _) = lastAliasOccurrence(in: backward, aliases: aliases),
+               let canonical = aliasToCanonical[alias] {
+                parts.append(MaterialPart(material: canonical, percent: pct))
+                continue
             }
         }
 
         return parts
+    }
+
+    private static func firstAliasOccurrence(in s: String, aliases: [String]) -> (String, Int)? {
+        var best: (alias: String, idx: Int)? = nil
+        for a in aliases {
+            if let r = s.range(of: a) {
+                let idx = r.lowerBound.utf16Offset(in: s)
+                if best == nil || idx < best!.idx {
+                    best = (a, idx)
+                }
+            }
+        }
+        return best
+    }
+
+    private static func lastAliasOccurrence(in s: String, aliases: [String]) -> (String, Int)? {
+        var best: (alias: String, idx: Int)? = nil
+        for a in aliases {
+            if let r = s.range(of: a, options: .backwards) {
+                let idx = r.lowerBound.utf16Offset(in: s)
+                if best == nil || idx > best!.idx {
+                    best = (a, idx)
+                }
+            }
+        }
+        return best
+    }
+    
+    private static func bestSubsetNear100(_ parts: [MaterialPart]) -> [MaterialPart] {
+        guard parts.count > 1 else { return parts }
+
+        let target = 100
+        var best: [MaterialPart] = parts
+        var bestDiff = abs(parts.map(\.percent).reduce(0, +) - target)
+
+        // try all non-empty subsets
+        let n = parts.count
+        for mask in 1..<(1 << n) {
+            var subset: [MaterialPart] = []
+            subset.reserveCapacity(n)
+            var sum = 0
+
+            for i in 0..<n where (mask & (1 << i)) != 0 {
+                subset.append(parts[i])
+                sum += parts[i].percent
+            }
+
+            let diff = abs(sum - target)
+
+            // prefer closer to 100; tie-breaker: fewer items (simpler)
+            if diff < bestDiff || (diff == bestDiff && subset.count < best.count) {
+                bestDiff = diff
+                best = subset
+            }
+
+            // perfect match, stop early
+            if bestDiff == 0 { break }
+        }
+
+        return best.sorted { $0.percent > $1.percent }
     }
 }
