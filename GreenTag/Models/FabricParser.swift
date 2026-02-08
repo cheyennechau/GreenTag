@@ -263,3 +263,113 @@ enum FabricParser {
         return best.sorted { $0.percent > $1.percent }
     }
 }
+
+import Foundation
+
+extension FabricParser {
+    /// Parse manual text like "60% cotton, 40% polyester" into MaterialPart[]
+    /// Uses the same material key normalization your scoring tables expect.
+    static func parseManualParts(_ text: String) -> [MaterialPart] {
+        let cleaned = text
+            .lowercased()
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: ",", with: " ")
+            .replacingOccurrences(of: ";", with: " ")
+            .replacingOccurrences(of: "%", with: "% ")
+
+        let tokens = cleaned.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+
+        var parts: [MaterialPart] = []
+        var i = 0
+        while i < tokens.count {
+            let t = tokens[i].replacingOccurrences(of: "%", with: "")
+            if let pct = Int(t), pct > 0, pct <= 100 {
+                let rawMaterial = (i + 1 < tokens.count) ? tokens[i + 1] : ""
+                let key = normalizeMaterialKey(rawMaterial)
+                if !key.isEmpty {
+                    parts.append(MaterialPart(material: key, percent: pct))
+                    i += 2
+                    continue
+                }
+            }
+            i += 1
+        }
+
+        // Fallback: user typed only "cotton" or "polyester"
+        if parts.isEmpty {
+            let words = tokens.filter { $0.allSatisfy(\.isLetter) }
+            if let first = words.first {
+                let key = normalizeMaterialKey(first)
+                if !key.isEmpty {
+                    parts = [MaterialPart(material: key, percent: 100)]
+                }
+            }
+        }
+
+        return mergeDuplicateMaterials(parts)
+    }
+
+    /// Map user-friendly names to scoring keys. Expand as you see real inputs.
+    private static func normalizeMaterialKey(_ raw: String) -> String {
+        let s = raw
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch s {
+        case "organic", "organiccotton", "organic-cotton", "organic_cotton":
+            return "organic_cotton"
+        case "cotton":
+            return "cotton"
+        case "poly", "polyester":
+            return "polyester"
+        case "recycledpolyester", "recycled-polyester", "recycled_polyester":
+            return "recycled_polyester"
+        case "nylon", "polyamide":
+            return "nylon"
+        case "recyclednylon", "recycled-nylon", "recycled_nylon":
+            return "recycled_nylon"
+        case "spandex", "elastane":
+            return "elastane"
+        case "linen":
+            return "linen"
+        case "hemp":
+            return "hemp"
+        case "wool":
+            return "wool"
+        case "cashmere":
+            return "cashmere"
+        case "silk":
+            return "silk"
+        case "viscose", "rayon":
+            return "viscose"
+        case "bamboo", "bamboo_viscose", "bamboo-viscose":
+            return "bamboo_viscose"
+        case "acrylic":
+            return "acrylic"
+        case "polypropylene":
+            return "polypropylene"
+        case "polyurethane":
+            return "polyurethane"
+        case "acetate":
+            return "acetate"
+        case "leather":
+            return "leather"
+        case "fauxleather", "faux-leather", "faux_leather":
+            return "faux_leather"
+        default:
+            // If user typed "cotton/polyester" etc, strip punctuation and try again
+            let stripped = s.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+            if stripped != s { return normalizeMaterialKey(stripped) }
+            return ""
+        }
+    }
+
+    private static func mergeDuplicateMaterials(_ parts: [MaterialPart]) -> [MaterialPart] {
+        var dict: [String: Int] = [:]
+        for p in parts {
+            dict[p.material, default: 0] += p.percent
+        }
+        return dict.map { MaterialPart(material: $0.key, percent: $0.value) }
+            .sorted { $0.percent > $1.percent }
+    }
+}

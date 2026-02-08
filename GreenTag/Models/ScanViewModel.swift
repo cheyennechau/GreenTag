@@ -289,47 +289,117 @@ final class ScanViewModel: ObservableObject {
         }
 
         Task {
-            // Build a lightweight "result" from manual fields for MVP
-            // (You can later run it through OpenAI / backend)
-            let brand = tagInput.brandName.trimmingCharacters(in: .whitespacesAndNewlines)
-            let score = 70 // MVP placeholder until you have real logic
+            // 1) Build parts from manual entry
+            let parts = FabricParser.parseManualParts(tagInput.materials)
 
-            // Make a minimal ScanResult so UI can show something
+            // 2) Score them
+            let scored = ScoringEngine.score(parts: parts)
+
+            // 3) Convert parts → MaterialComposition for the UI top card
+            let materials: [MaterialComposition] = parts.map { part in
+                MaterialComposition(material: prettyName(part.material), percentage: part.percent)
+            }
+
+            // 4) Convert biodeg months → strings ResultsView expects
+            let low = monthsToPretty(scored.biodegMajority.minMonths)
+            let high = monthsToPretty(scored.biodegMajority.maxMonths)
+
+            let biodeg = BiodegradationData(
+                rangeLow: low,
+                rangeHigh: high,
+                positionPercent: Double(scored.overall) / 100.0,
+                hasSynthetics: scored.syntheticWarning,
+                syntheticWarning: scored.syntheticWarning
+                    ? "Synthetic blend detected — microplastics risk and slower degradation."
+                    : nil,
+                comparisons: [
+                    BiodegradationComparison(label: "Apple core", time: "2 months", isSynthetic: false),
+                    BiodegradationComparison(label: "Cotton tee", time: "6 months", isSynthetic: false),
+                    BiodegradationComparison(label: "Nylon jacket", time: "30–40 yr", isSynthetic: true),
+                    BiodegradationComparison(label: "Plastic bottle", time: "450 yr", isSynthetic: true),
+                ]
+            )
+
+            // 5) Build breakdown using your existing UI model
+            let breakdown: [BreakdownCategory] = [
+                BreakdownCategory(
+                    label: "Materials",
+                    value: scored.overall, // MVP: reuse overall; later you can expose sub-scores from engine
+                    explanation: parts.isEmpty ? "No materials entered." : "Blend-weighted fiber scores (MVP).",
+                    color: bucket(scored.overall),
+                    sfSymbol: "tshirt.fill"
+                ),
+                BreakdownCategory(
+                    label: "Microplastics",
+                    value: scored.syntheticWarning ? 45 : 85,
+                    explanation: scored.syntheticWarning ? "Synthetic content increases microplastics risk." : "Mostly natural fibers reduces microplastics risk.",
+                    color: bucket(scored.syntheticWarning ? 45 : 85),
+                    sfSymbol: "drop.fill"
+                ),
+                BreakdownCategory(
+                    label: "Biodegradation",
+                    value: biodegScoreToUI(scored.biodegMajority.maxMonths),
+                    explanation: "Estimated from material mix biodegradation ranges.",
+                    color: bucket(biodegScoreToUI(scored.biodegMajority.maxMonths)),
+                    sfSymbol: "leaf.fill"
+                ),
+                BreakdownCategory(
+                    label: "Durability",
+                    value: 70,
+                    explanation: "Heuristic durability estimate (MVP).",
+                    color: bucket(70),
+                    sfSymbol: "shield.lefthalf.filled"
+                )
+            ]
+
+            let certs: [Certification] = tagInput.certifications
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .map { Certification(name: $0.uppercased(), verified: false) }
+
+            var why: [String] = []
+            if !parts.isEmpty {
+                why.append("Entered composition: " + materials.map { "\($0.percentage)% \($0.material)" }.joined(separator: ", "))
+            } else {
+                why.append("No composition entered — score is less confident.")
+            }
+            why.append("Verdict based on weighted fiber sustainability + microplastics + biodegradation (MVP).")
+            if scored.syntheticWarning { why.append("Synthetic blend ≥ 30% triggers warning.") }
+            if !certs.isEmpty { why.append("Certifications entered: " + certs.map { $0.name }.joined(separator: ", ")) }
+
+            let brand = tagInput.brandName.trimmingCharacters(in: .whitespacesAndNewlines)
             let manualResult = ScanResult(
                 brand: brand.isEmpty ? "UNKNOWN" : brand.uppercased(),
                 item: "Clothing Item",
-                materials: [],
-                score: score,
+                materials: materials,
+                score: scored.overall,
                 confidence: .medium,
-                breakdown: [],
-                biodegradation: BiodegradationData(
-                    rangeLow: "—",
-                    rangeHigh: "—",
-                    positionPercent: Double(score)/100.0,
-                    hasSynthetics: false,
-                    syntheticWarning: nil,
-                    comparisons: []
-                ),
-                whyThisScore: ["Manual entry (MVP placeholder scoring)."],
-                certifications: []
+                breakdown: breakdown,
+                biodegradation: biodeg,
+                whyThisScore: why,
+                certifications: certs
             )
 
             self.result = manualResult
 
-            // Auto-save
+            // 6) Auto-save
             scanStore?.addRecord(
                 brand: manualResult.brand,
                 score: manualResult.score,
-                grade: "Manual",
+                grade: scored.verdict.rawValue,
                 notes: "Manual entry",
                 image: nil,
                 analysisJSON: [
                     "source": "manual",
                     "brandName": tagInput.brandName,
-                    "materials": tagInput.materials,
-                    "countryOfOrigin": tagInput.countryOfOrigin,
-                    "careInstructions": tagInput.careInstructions,
-                    "certifications": tagInput.certifications
+                    "materialsInput": tagInput.materials,
+                    "parts": parts.map { ["material": $0.material, "percent": $0.percent] },
+                    "overall": scored.overall,
+                    "verdict": scored.verdict.rawValue,
+                    "biodegMinMonths": scored.biodegMajority.minMonths,
+                    "biodegMaxMonths": scored.biodegMajority.maxMonths,
+                    "syntheticWarning": scored.syntheticWarning
                 ]
             )
             didAutoSaveCurrentResult = true
@@ -337,6 +407,31 @@ final class ScanViewModel: ObservableObject {
             withAnimation(.easeInOut(duration: 0.3)) {
                 screenState = .results
             }
+        }
+    }
+    
+    private func prettyName(_ key: String) -> String {
+        key.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func monthsToPretty(_ months: Int) -> String {
+        if months < 12 { return "\(months) mo" }
+        let years = Double(months) / 12.0
+        if years < 10 {
+            return String(format: "%.1f yr", years)
+        } else {
+            return "\(Int(round(years))) yr"
+        }
+    }
+
+    private func biodegScoreToUI(_ maxMonths: Int) -> Int {
+        switch maxMonths {
+        case ...6: return 95
+        case 7...12: return 88
+        case 13...24: return 78
+        case 25...60: return 62
+        case 61...120: return 45
+        default: return 30
         }
     }
 }
