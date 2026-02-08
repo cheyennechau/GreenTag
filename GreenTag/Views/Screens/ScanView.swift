@@ -27,7 +27,12 @@ struct TagInput {
 // MARK: - Scan View
 
 struct ScanView: View {
-    @StateObject private var vm = ScanViewModel()
+    @EnvironmentObject private var scanStore: ScanStore
+    @StateObject private var vm: ScanViewModel
+
+    init() {
+        _vm = StateObject(wrappedValue: ScanViewModel())
+    }
 
     @Environment(\.dismiss) var dismiss
     @State private var scanLineOffset: CGFloat = 0
@@ -101,6 +106,9 @@ struct ScanView: View {
                     }
                 }
             }
+            .onAppear {
+                vm.scanStore = scanStore
+            }
     }
 
     // MARK: - Scanner View (camera state)
@@ -150,12 +158,7 @@ struct ScanView: View {
               tagInput.source == .manual else { return }
 
         vm.tagInput = tagInput // capture manual input
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                vm.screenState = .loading
-            }
-        }
+        vm.analyzeManual()
     }
 
     // MARK: - Top Bar
@@ -600,6 +603,7 @@ struct ManualEntryField: View {
 
 #Preview("Scanner") {
     ScanView()
+        .environmentObject(ScanStore())
 }
 
 #Preview("Manual Entry") {
