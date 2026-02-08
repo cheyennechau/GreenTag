@@ -4,6 +4,10 @@ struct ConfidenceIndicatorView: View {
     let level: ConfidenceLevel
 
     var body: some View {
+        // extract commonly-used values to help the compiler
+                let activeBars = level.activeBars
+                let barColor = level.color
+                let labelText = level.label
         HStack(spacing: 6) {
             // Signal bars
             HStack(alignment: .bottom, spacing: 2.5) {

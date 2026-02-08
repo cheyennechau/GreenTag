@@ -413,6 +413,99 @@ struct SettingsView: View {
 //    }
 //}
 
+//struct ScanHistoryView: View {
+//    @EnvironmentObject var scanStore: ScanStore
+//    @State private var showDeleteConfirmation = false
+//    @State private var recordToDelete: ScanRecord?
+//
+//    var body: some View {
+//        List {
+//            ForEach(scanStore.records) { scan in
+//                NavigationLink(value: scan) {
+//                    historyRow(scan)
+//                }
+//            }
+//            .onDelete(perform: { offsets in
+//                // ask to confirm deletion (optional)
+//                // we can immediately delete; for safety, confirm
+//                let removed = offsets.compactMap { scanStore.records[$0] }
+//                if removed.count == 1 {
+//                    recordToDelete = removed.first
+//                    showDeleteConfirmation = true
+//                } else {
+//                    scanStore.delete(at: offsets)
+//                }
+//            })
+//        }
+//        .navigationTitle("Past Results")
+//        .navigationBarTitleDisplayMode(.inline)
+//        .confirmationDialog("Delete this saved scan?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+//            Button("Delete", role: .destructive) {
+//                if let r = recordToDelete {
+//                    scanStore.delete(record: r)
+//                    recordToDelete = nil
+//                }
+//            }
+//            Button("Cancel", role: .cancel) {
+//                recordToDelete = nil
+//            }
+//        }
+//        // Using NavigationStack + value style allows passing the record object
+//        .navigationDestination(for: ScanRecord.self) { record in
+//            SavedResultView(record: record)
+//                .environmentObject(scanStore)
+//        }
+//    }
+//
+//    @ViewBuilder
+//    private func historyRow(_ scan: ScanRecord) -> some View {
+//        HStack(spacing: 14) {
+//            ZStack {
+//                RoundedRectangle(cornerRadius: 10, style: .continuous)
+//                    .fill(Color.leafGreen.opacity(0.10))
+//                    .frame(width: 42, height: 42)
+//
+//                if let image = scanStore.loadImage(for: scan) {
+//                    Image(uiImage: image)
+//                        .resizable()
+//                        .scaledToFill()
+//                        .frame(width: 42, height: 42)
+//                        .clipShape(RoundedRectangle(cornerRadius: 8))
+//                } else {
+//                    Image(systemName: "doc.text.magnifyingglass")
+//                        .font(.system(size: 16, weight: .semibold))
+//                        .foregroundStyle(Color.leafGreen)
+//                }
+//            }
+//            VStack(alignment: .leading, spacing: 3) {
+//                Text(scan.brand)
+//                    .font(.subheadline.weight(.semibold))
+//                Text(DateFormatter.localizedString(from: scan.date, dateStyle: .medium, timeStyle: .none))
+//                    .font(.caption)
+//                    .foregroundStyle(.secondary)
+//            }
+//            Spacer()
+//            if let grade = scan.grade {
+//                Text(grade)
+//                    .font(.system(size: 15, weight: .bold, design: .rounded))
+//                    .foregroundStyle(Color.forestGreen)
+//                    .padding(.horizontal, 10)
+//                    .padding(.vertical, 5)
+//                    .background(Color.paleGreen)
+//                    .clipShape(Capsule())
+//            } else if let score = scan.score {
+//                Text("\(score)")
+//                    .font(.system(size: 15, weight: .bold, design: .rounded))
+//                    .foregroundStyle(Color.forestGreen)
+//                    .padding(.horizontal, 10)
+//                    .padding(.vertical, 5)
+//                    .background(Color.paleGreen)
+//                    .clipShape(Capsule())
+//            }
+//        }
+//        .padding(.vertical, 6)
+//    }
+//}
 struct ScanHistoryView: View {
     @EnvironmentObject var scanStore: ScanStore
     @State private var showDeleteConfirmation = false
@@ -421,13 +514,16 @@ struct ScanHistoryView: View {
     var body: some View {
         List {
             ForEach(scanStore.records) { scan in
-                NavigationLink(value: scan) {
+                NavigationLink {
+                    // explicit destination
+                    SavedResultView(record: scan)
+                        // environmentObject(scanStore) // optional; already injected at root
+                } label: {
                     historyRow(scan)
                 }
             }
-            .onDelete(perform: { offsets in
-                // ask to confirm deletion (optional)
-                // we can immediately delete; for safety, confirm
+            .onDelete { offsets in
+                // prepare confirmation if a single item or just delete multiple
                 let removed = offsets.compactMap { scanStore.records[$0] }
                 if removed.count == 1 {
                     recordToDelete = removed.first
@@ -435,7 +531,7 @@ struct ScanHistoryView: View {
                 } else {
                     scanStore.delete(at: offsets)
                 }
-            })
+            }
         }
         .navigationTitle("Past Results")
         .navigationBarTitleDisplayMode(.inline)
@@ -449,11 +545,6 @@ struct ScanHistoryView: View {
             Button("Cancel", role: .cancel) {
                 recordToDelete = nil
             }
-        }
-        // Using NavigationStack + value style allows passing the record object
-        .navigationDestination(for: ScanRecord.self) { record in
-            SavedResultView(record: record)
-                .environmentObject(scanStore)
         }
     }
 
@@ -506,6 +597,7 @@ struct ScanHistoryView: View {
         .padding(.vertical, 6)
     }
 }
+
 
 
 #Preview {

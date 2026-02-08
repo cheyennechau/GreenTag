@@ -6,15 +6,14 @@ struct GreenTagApp: App {
     @StateObject private var scanStore = ScanStore()
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(scanStore) // inject the single shared store
-                .onAppear {
-                    // quick debug so you can see the store path in console
-                    #if DEBUG
-                    print("[GreenTagApp] ScanStore injected")
-                    #endif
-                }
+            WindowGroup {
+                // Use HomeView as the single root so navigation and environmentObject are consistent
+                HomeView()
+                    .environmentObject(scanStore)
+                    .task {
+                        // async load persisted data, then seed if empty
+                        await scanStore.loadIfNeeded()
+                    }
+            }
         }
-    }
 }

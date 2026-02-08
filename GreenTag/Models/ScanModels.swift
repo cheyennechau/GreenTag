@@ -1,86 +1,115 @@
 import Foundation
-
+import SwiftUI
 // MARK: - Material Composition
 
-struct MaterialComposition: Identifiable {
-    let id = UUID()
-    let material: String
-    let percentage: Int
+struct MaterialComposition: Codable, Identifiable {
+    public let id = UUID()
+    public let material: String
+    public let percentage: Int
+    private enum CodingKeys: String, CodingKey {
+           case material, percentage
+       }
 }
 
 // MARK: - Breakdown Category
 
-struct BreakdownCategory: Identifiable {
-    let id = UUID()
-    let label: String
-    let value: Int
-    let explanation: String
-    let color: String      // "good", "mixed", "avoid"
-    let sfSymbol: String
+struct BreakdownCategory: Codable,Identifiable {
+    public let id = UUID()
+    public let label: String
+    public let value: Int
+    public let explanation: String
+    public let color: String
+    public let sfSymbol: String
+
+    private enum CodingKeys: String, CodingKey {
+        case label, value, explanation, color, sfSymbol
+    }
 }
+
 
 // MARK: - Biodegradation
 
-struct BiodegradationComparison: Identifiable {
-    let id = UUID()
-    let label: String
-    let time: String
-    let isSynthetic: Bool
+struct BiodegradationComparison: Identifiable, Codable {
+    public let id = UUID()
+    public let label: String
+    public let time: String
+    public let isSynthetic: Bool
+
+    // exclude id from Codable synthesis
+    private enum CodingKeys: String, CodingKey {
+        case label, time, isSynthetic
+    }
 }
 
-struct BiodegradationData {
-    let rangeLow: String
-    let rangeHigh: String
-    let positionPercent: Double
-    let hasSynthetics: Bool
-    let syntheticWarning: String?
-    let comparisons: [BiodegradationComparison]
+struct BiodegradationData: Codable {
+    public let rangeLow: String
+    public let rangeHigh: String
+    public let positionPercent: Double
+    public let hasSynthetics: Bool
+    public let syntheticWarning: String?
+    public let comparisons: [BiodegradationComparison]
 }
 
 struct AssumptionEnvironment: Identifiable {
-    let id = UUID()
-    let name: String
-    let note: String
+    public let id = UUID()
+    public let name: String
+    public let note: String
+
+    private enum CodingKeys: String, CodingKey {
+        case name, note
+    }
 }
 
 // MARK: - Certification
 
-struct Certification: Identifiable {
-    let id = UUID()
-    let name: String
-    let verified: Bool
+struct Certification: Codable, Identifiable {
+    public let id = UUID()
+    public let name: String
+    public let verified: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case name, verified
+    }
 }
 
 // MARK: - Compare Item
 
 struct CompareItem: Identifiable {
-    let id = UUID()
-    let brand: String
-    let item: String
-    let score: Int
-    let materials: String
-    let breakdown: [BreakdownSimple]
-    let biodegRange: String
+    public let id = UUID()
+    public let brand: String
+    public let item: String
+    public let score: Int
+    public let materials: String
+    public let breakdown: [BreakdownSimple]
+    public let biodegRange: String
+
+    private enum CodingKeys: String, CodingKey {
+        case brand, item, score, materials, breakdown, biodegRange
+    }
 }
 
 struct BreakdownSimple: Identifiable {
-    let id = UUID()
-    let label: String
-    let value: Int
+    public let id = UUID()
+    public let label: String
+    public let value: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case label, value
+    }
 }
 
 // MARK: - Complete Scan Result
 
 struct ScanResult: Codable {
-    let brand: String
-    let item: String
-    let materials: [MaterialComposition]
-    let score: Int
-    let confidence: ConfidenceLevel
-    let breakdown: [BreakdownCategory]
-    let biodegradation: BiodegradationData
-    let whyThisScore: [String]
-    let certifications: [Certification]
+    public let brand: String
+    public let item: String
+    public let materials: [MaterialComposition]
+    public let score: Int
+    public let confidence: ConfidenceLevel
+    public let breakdown: [BreakdownCategory]
+    public let biodegradation: BiodegradationData
+    public let whyThisScore: [String]
+    public let certifications: [Certification]
 }
 
 // MARK: - Screen State
@@ -91,7 +120,31 @@ enum ScreenState: Equatable {
     case error
     case results
 }
+enum ConfidenceLevel: String, Codable {
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    
+    var activeBars: Int {
+           switch self {
+           case .high: return 3
+           case .medium: return 2
+           case .low: return 1
+           }
+       }
 
+       var color: Color {
+           switch self {
+           case .high: return .gtGood
+           case .medium: return .gtMixed
+           case .low: return .gtAvoid
+           }
+       }
+
+       var label: String {
+           "\(rawValue) confidence"
+       }
+}
 // MARK: - Sample Data
 
 enum SampleData {

@@ -78,12 +78,14 @@ struct SavedResultView: View {
 
     @MainActor
     private func loadIfAvailable() async {
-        // Try to decode the full ScanResult via ScanStore (Option A)
         if let r = scanStore.loadAnalysis(for: record) {
+            // real persisted analysis
             decodedResult = r
         } else {
-            decodedResult = nil
+            
+            decodedResult = SampleData.result
         }
         isLoading = false
     }
+
 }

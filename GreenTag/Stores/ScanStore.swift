@@ -12,8 +12,18 @@ internal import Combine
 
 @MainActor
 final class ScanStore: ObservableObject {
+    
     @Published private(set) var records: [ScanRecord] = []
-
+    // call this once at app start or via a debug button
+        func seedFakeDataIfEmpty() {
+            guard records.isEmpty else { return }
+            records = [
+                ScanRecord(id: UUID(), brand: "Everlane", date: Date(), score: 72, grade: nil),
+                ScanRecord(id: UUID(), brand: "H&M", date: Date().addingTimeInterval(-60*60*24*2), score: 48, grade: nil),
+                ScanRecord(id: UUID(), brand: "Patagonia", date: Date().addingTimeInterval(-60*60*24*7), score: nil, grade: "A+")
+            ]
+        }
+    
     private let storeFileURL: URL
     private let imagesDirectory: URL
 
@@ -80,6 +90,7 @@ final class ScanStore: ObservableObject {
             print("ScanStore save error:", error)
         }
     }
+    
 
     func add(record: ScanRecord, image: UIImage? = nil) {
         var r = record
@@ -187,4 +198,15 @@ final class ScanStore: ObservableObject {
         }
     }
 
+}
+extension ScanStore {
+    // call at app start; existing load() is async so this wrapper calls it safely
+    func loadIfNeeded() async {
+        // try to load persisted file — if nothing exists, seedFakeDataIfEmpty already created samples
+        await load()
+        if records.isEmpty {
+            // keep seeded fake data if load found nothing
+            seedFakeDataIfEmpty()
+        }
+    }
 }

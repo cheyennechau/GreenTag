@@ -64,31 +64,31 @@ enum Verdict: String {
 
 // MARK: - Confidence
 
-enum ConfidenceLevel: String, CaseIterable {
-    case high = "High"
-    case medium = "Medium"
-    case low = "Low"
-
-    var color: Color {
-        switch self {
-        case .high: return .gtGood
-        case .medium: return .gtMixed
-        case .low: return .gtAvoid
-        }
-    }
-
-    var activeBars: Int {
-        switch self {
-        case .high: return 3
-        case .medium: return 2
-        case .low: return 1
-        }
-    }
-
-    var label: String {
-        "\(rawValue) confidence"
-    }
-}
+//enum ConfidenceLevel: String, Codable {
+//    case high = "High"
+//    case medium = "Medium"
+//    case low = "Low"
+//
+//    var color: Color {
+//        switch self {
+//        case .high: return .gtGood
+//        case .medium: return .gtMixed
+//        case .low: return .gtAvoid
+//        }
+//    }
+//
+//    var activeBars: Int {
+//        switch self {
+//        case .high: return 3
+//        case .medium: return 2
+//        case .low: return 1
+//        }
+//    }
+//
+//    var label: String {
+//        "\(rawValue) confidence"
+//    }
+//}
 
 // MARK: - Spacing Constants
 
