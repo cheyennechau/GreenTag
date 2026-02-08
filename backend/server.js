@@ -218,9 +218,11 @@ async function callLLM(brand, sources) {
     buildUserPrompt(brand, sourcesText) + "\n\n" + FEW_SHOT_EXAMPLE;
 
   const body = {
+    systemInstruction: {
+      parts: [{ text: SYSTEM_PROMPT }]
+    },
     contents: [
-      { parts: [{ text: SYSTEM_PROMPT }] },
-      { parts: [{ text: userPrompt }] }
+      { role: "user", parts: [{ text: userPrompt }] }
     ],
     generationConfig: {
       temperature: 0.0,
