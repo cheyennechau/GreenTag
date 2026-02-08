@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ResultsView: View {
     let result: ScanResult
+    let image: UIImage?
     @EnvironmentObject var scanStore: ScanStore
     @Binding var screenState: ScreenState
 
@@ -15,6 +16,7 @@ struct ResultsView: View {
                     // Item preview card
                     cardSection {
                         ItemPreviewView(
+                            image: image,
                             brand: result.brand,
                             item: result.item,
                             materials: result.materials
@@ -151,7 +153,7 @@ struct ResultsView: View {
 
 #Preview {
     NavigationStack {
-        ResultsView(result: SampleData.result, screenState: .constant(.results))
+        ResultsView(result: SampleData.result, image: nil, screenState: .constant(.results))
             .environmentObject(ScanStore())
     }
 }
