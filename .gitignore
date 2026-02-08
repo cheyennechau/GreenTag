@@ -6,3 +6,4 @@ DerivedData/
 *.xcconfig
 .env
 GreenTag/ContentView.swift
+GreenTag/GreenTagApp.swift
