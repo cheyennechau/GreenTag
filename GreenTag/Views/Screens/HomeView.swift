@@ -576,22 +576,28 @@ struct ScanHistoryView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if let grade = scan.grade {
-                Text(grade)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.forestGreen)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.paleGreen)
-                    .clipShape(Capsule())
-            } else if let score = scan.score {
-                Text("\(score)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.forestGreen)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.paleGreen)
-                    .clipShape(Capsule())
+            let verdict: Verdict? = {
+                // Prefer grade if it's exactly "Good/Mixed/Avoid"
+                if let g = scan.grade, let v = Verdict(rawValue: g) { return v }
+                // Otherwise derive from numeric score
+                if let s = scan.score { return Verdict.from(score: s) }
+                return nil
+            }()
+
+            if let verdict {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(verdict.color)
+                        .frame(width: 6, height: 6)
+
+                    Text(verdict.rawValue)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(verdict.color)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(verdict.color.opacity(0.12))
+                .clipShape(Capsule())
             }
         }
         .padding(.vertical, 6)

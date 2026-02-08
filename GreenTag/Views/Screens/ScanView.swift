@@ -58,7 +58,11 @@ struct ScanView: View {
 
                 case .results:
                     if let result = vm.result {
-                        ResultsView(result: result, screenState: $vm.screenState)
+                        ResultsView(
+                            result: result,
+                            image: vm.lastImage,
+                            screenState: $vm.screenState
+                        )
                     } else {
                         LoadingView(screenState: $vm.screenState)
                     }

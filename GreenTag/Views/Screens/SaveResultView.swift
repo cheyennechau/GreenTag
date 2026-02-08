@@ -12,6 +12,7 @@ import SwiftUI
 struct SavedResultView: View {
     let record: ScanRecord
     @EnvironmentObject var scanStore: ScanStore
+    @State private var image: UIImage?
 
     @State private var decodedResult: ScanResult?
     @State private var isLoading = true
@@ -21,7 +22,7 @@ struct SavedResultView: View {
             if isLoading {
                 ProgressView("Loading…")
             } else if let result = decodedResult {
-                ResultsView(result: result, screenState: .constant(.results))
+                ResultsView(result: result, image: image, screenState: .constant(.results))
             } else {
                 fallbackView
             }
@@ -76,6 +77,8 @@ struct SavedResultView: View {
 
     @MainActor
     private func loadIfAvailable() async {
+        image = scanStore.loadImage(for: record)
+        
         // Attempt to rebuild a ScanResult from persisted analysis JSON
         if let rebuilt = scanStore.rebuildScanResult(for: record) {
             decodedResult = rebuilt

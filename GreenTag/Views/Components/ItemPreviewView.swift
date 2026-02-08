@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ItemPreviewView: View {
+    let image: UIImage?
     let brand: String
     let item: String
     let materials: [MaterialComposition]
@@ -13,9 +14,17 @@ struct ItemPreviewView: View {
                     .fill(Color(UIColor.tertiarySystemFill))
                     .frame(width: 72, height: 72)
 
-                Image(systemName: "photo")
-                    .font(.system(size: 22, weight: .light))
-                    .foregroundColor(.gtTertiaryText)
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: GTSpacing.cardRadius))
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundColor(.gtTertiaryText)
+                }
             }
             .accessibilityHidden(true)
 
@@ -51,6 +60,7 @@ struct ItemPreviewView: View {
 
 #Preview {
     ItemPreviewView(
+        image: nil,
         brand: "EVERLANE",
         item: "The Organic Cotton Crew",
         materials: SampleData.result.materials
