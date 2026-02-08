@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CheyenneRootView: View {
     var body: some View {
-        ScanCoordinator()
+        ScanView()
     }
 }
 

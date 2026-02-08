@@ -27,44 +27,64 @@ struct TagInput {
 // MARK: - Scan View
 
 struct ScanView: View {
-    @State private var screenState: ScreenState = .scan
+    @StateObject private var vm = ScanViewModel()
+
     @Environment(\.dismiss) var dismiss
     @State private var scanLineOffset: CGFloat = 0
     @State private var showManualEntry = false
     @State private var tagInput = TagInput()
 
+    enum ActiveSheet: Identifiable {
+        case scanner, photos
+        var id: Int { hashValue }
+    }
+    @State private var activeSheet: ActiveSheet?
+
     var body: some View {
         NavigationStack {
             ZStack {
-                switch screenState {
+                switch vm.screenState {
                 case .scan:
                     scannerView
                         .transition(.opacity)
 
                 case .loading:
-                    // Uses existing LoadingView — shimmer skeleton that auto-transitions to .results
-                    LoadingView(screenState: $screenState)
+                    LoadingView(screenState: $vm.screenState)
                         .transition(.opacity)
 
                 case .results:
-                    ResultsView(
-                        result: SampleData.result,
-                        screenState: $screenState
-                    )
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    // For now you can keep SampleData.result if ResultsView needs that type.
+                    // Next step is to build a real Result model from vm fields.
+                    ResultsView(result: SampleData.result, screenState: $vm.screenState)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
 
                 default:
                     scannerView
-                        .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.35), value: screenState)
-            .navigationBarHidden(screenState == .scan)
+            .animation(.easeInOut(duration: 0.35), value: vm.screenState)
+            .navigationBarHidden(vm.screenState == .scan)
             .sheet(isPresented: $showManualEntry, onDismiss: handleManualEntryDismiss) {
                 ManualEntrySheet(tagInput: $tagInput)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                     .presentationCornerRadius(24)
+            }
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .scanner:
+                    DocumentScannerView { images in
+                        guard let first = images.first else { return }
+                        activeSheet = nil
+                        vm.analyze(image: first)
+                    }
+
+                case .photos:
+                    PhotoPicker { image in
+                        activeSheet = nil
+                        vm.analyze(image: image)
+                    }
+                }
             }
         }
     }
@@ -119,7 +139,7 @@ struct ScanView: View {
         // Small delay so the sheet dismiss animation finishes
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.easeInOut(duration: 0.3)) {
-                screenState = .loading
+                vm.screenState = .loading
             }
         }
     }
@@ -128,31 +148,7 @@ struct ScanView: View {
 
     private var topBar: some View {
         HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.12))
-                    .clipShape(Circle())
-            }
-            .accessibilityLabel("Close scanner")
-
             Spacer()
-
-            Button {
-                // Flash toggle
-            } label: {
-                Image(systemName: "bolt")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.12))
-                    .clipShape(Circle())
-            }
-            .accessibilityLabel("Toggle flash")
         }
         .padding(.horizontal, GTSpacing.xl)
     }
@@ -181,11 +177,15 @@ struct ScanView: View {
                         .position(x: w - bracketLen / 2, y: h - bracketLen / 2)
                 }
 
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.gtPrimary.opacity(0.8))
-                    .frame(width: w - 32, height: 2)
-                    .shadow(color: Color.gtPrimary.opacity(0.5), radius: 8)
-                    .offset(y: -h / 2 + 16 + (h - 32) * scanLineOffset)
+                if w > 32 {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.gtPrimary.opacity(0.8))
+                        .frame(width: w - 32, height: 2)
+                        .shadow(color: Color.gtPrimary.opacity(0.5), radius: 8)
+                        .offset(
+                            y: -h / 2 + 16 + (h - 32) * scanLineOffset
+                        )
+                }
 
                 VStack(spacing: 12) {
                     Image(systemName: "tag")
@@ -217,50 +217,35 @@ struct ScanView: View {
 
     private var bottomControls: some View {
         VStack(spacing: GTSpacing.xl) {
-            // Capture button
+
             Button {
                 tagInput = TagInput(source: .camera)
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    screenState = .loading
-                }
+                activeSheet = .scanner
             } label: {
                 ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 72, height: 72)
-                    Circle()
-                        .strokeBorder(Color.black.opacity(0.1), lineWidth: 2.5)
-                        .frame(width: 66, height: 66)
+                    Circle().fill(Color.white).frame(width: 72, height: 72)
+                    Circle().strokeBorder(Color.black.opacity(0.1), lineWidth: 2.5).frame(width: 66, height: 66)
                     Image(systemName: "camera.fill")
                         .font(.system(size: 24, weight: .medium))
                         .foregroundColor(.black.opacity(0.85))
                 }
             }
-            .accessibilityLabel("Capture tag photo")
 
-            // Secondary actions
             HStack(spacing: GTSpacing.xxl) {
                 Button("Choose photo") {
-                    // Photo library — for now, simulate same as camera
                     tagInput = TagInput(source: .photoLibrary)
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        screenState = .loading
-                    }
+                    activeSheet = .photos
                 }
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .font(.subheadline).fontWeight(.medium)
                 .foregroundColor(.white.opacity(0.5))
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 1, height: 12)
+                Rectangle().fill(Color.white.opacity(0.2)).frame(width: 1, height: 12)
 
                 Button("Enter manually") {
                     tagInput = TagInput(source: .manual)
                     showManualEntry = true
                 }
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .font(.subheadline).fontWeight(.medium)
                 .foregroundColor(.white.opacity(0.5))
             }
         }
